@@ -386,7 +386,7 @@ const PRO4_DATA={"nv":4536,"pos":"rNuDviNiMz/SPbW7cot5voB1ND+NN7W7XkOBvnQlND+ksh
 /* ======================= RÉGLAGES ======================= */
 const IS_TOUCH=('ontouchstart' in window)||(typeof navigator!=='undefined'&&navigator.maxTouchPoints>0);
 const LOW=IS_TOUCH||Math.min(innerWidth,innerHeight)<640;
-const CFG={startBudget:320,startLives:10,income:1.2,maxWave:Infinity,hpGrowth:.2,firstPrep:30,prep:18,
+const CFG={startBudget:320,startLives:10,income:.6,maxWave:Infinity,hpGrowth:.2,firstPrep:30,prep:18,
   reinforceCost:30,upgradeBase:70,upgradeMax:3,
   commanderHp:240,gatRange:26,commanderSpeed:3.6,strikeDmg:18,strikeCd:.34,strikeReach:2.4};
 const STREET_X=5.2,LINE_Z=18,SPAWN_Z=-56;
@@ -402,9 +402,9 @@ const SQUADS=[
   {name:'GAT',type:'gat',n:3,color:0xa3e05a,x:-2.6,z:15.2,fo:[-2.6,8],unlock:-1,cost:220,from:2},
   {name:'CANON À EAU',type:'water',n:1,color:0xc77dff,x:0,z:12,fo:[0,10.5],unlock:5}];
 const ENEMY={
-  p:{hp:45,speed:1.8,dmg:6,rate:1.0,leak:1,reward:8,r:.45,w:1,aggro:4.5},
-  b:{hp:80,speed:3.0,dmg:9,rate:1.0,leak:2,reward:14,r:.45,w:1,aggro:9,ranged:true},
-  l:{hp:520,speed:1.5,dmg:15,rate:1.2,leak:5,reward:120,r:.7,w:3,aggro:6}};
+  p:{hp:45,speed:1.8,dmg:6,rate:1.0,leak:1,reward:5,r:.45,w:1,aggro:4.5},
+  b:{hp:80,speed:3.0,dmg:9,rate:1.0,leak:2,reward:8,r:.45,w:1,aggro:9,ranged:true},
+  l:{hp:520,speed:1.5,dmg:15,rate:1.2,leak:5,reward:65,r:.7,w:3,aggro:6}};
 const SHOP=[
   {id:'lacry',kind:'gren',name:'Grenade lacrymogène CS',short:'Lacrymo',desc:'Fumigène : reste au sol et libère un nuage irritant qui ralentit et blesse.',qty:3,cost:30},
   {id:'gmd',kind:'gren',name:'GENL · désencerclement',short:'GENL',desc:'Projection de 18 plots en caoutchouc : blesse et repousse autour de l\'impact.',qty:2,cost:45},
@@ -2189,7 +2189,7 @@ function dmg(a,amount){
 function kill(a){
   if(a.dying)return;
   a.dying=.7;a.bar.bar.visible=false;
-  if(a.side==='e'&&!a.marked){a.dying=0;a.hp=Math.max(1,a.max*.15);a.down=0;a.flee=99;a.leaving=true;a.agit=0;budget+=Math.ceil(a.reward*.5);return;}   // simple manifestant : il quitte la manif
+  if(a.side==='e'&&!a.marked){a.dying=0;a.hp=Math.max(1,a.max*.15);a.down=0;a.flee=99;a.leaving=true;a.agit=0;budget+=Math.ceil(a.reward*.3);return;}   // simple manifestant : il quitte la manif
   if(a.side==='e'){if(a.mk)a.mk.visible=false;budget+=a.reward;a.arrested=true;a.dying=999;a.arrT=0;a.moving=false;P(a.x,1,a.z,{c:0xaaaaaa,vy:.6,life:.6,s0:.8,s1:2,a:.3});
     let best=null,bd=12;for(const s of squads)for(const m of s.members)if(m.role==='interv'&&!m.escort&&!m.dying){const d=Math.hypot(m.x-a.x,m.z-a.z);if(d<bd){bd=d;best=m;}}
     if(best){best.escort=a;a.escortBy=best;}}
@@ -2319,7 +2319,7 @@ function judgeStrike(t){
   const aggressive=(gT-(t.lastAtk||-99))<3||t.z>LINE_Z-4;
   if(t.down>0||t.stun>0||t.arrested||!aggressive)combo=0;
   if(t.down>0||t.stun>0||t.arrested){score-=20;tension=Math.min(100,tension+10);popupText('−20 · personne à terre','#ff5a4f',t.x,t.z);SND.bad();}
-  else if(aggressive){combo=(gT-comboT<4)?Math.min(5,combo+1):1;comboT=gT;const pts=10*combo;score+=pts;budget+=3*combo;
+  else if(aggressive){combo=(gT-comboT<4)?Math.min(5,combo+1):1;comboT=gT;const pts=10*combo;score+=pts;budget+=2*combo;
     popupText(combo>1?'+'+pts+' · série ×'+combo:'+10 · dans les clous',combo>1?'#ffd23f':'#5ee07a',t.x,t.z);if(combo>1)beep(380+combo*90,.07,'triangle',.03);}
   else{score-=15;tension=Math.min(100,tension+6);popupText('−15 · hors des clous','#ff5a4f',t.x,t.z);SND.bad();}
   if(t.down>0||t.stun>0||t.arrested||!aggressive)for(const o of agents)if(o.side==='e'&&!o.dying&&Math.hypot(o.x-t.x,o.z-t.z)<7)o.agit=(o.agit||0)+.45;
@@ -2867,7 +2867,7 @@ function launchWave(){
 }
 function waveCleared(){
   tension=Math.max(0,tension-25);
-  const bonus=60+wave*12;budget+=bonus;phase='prep';prepT=0;curScen=planWave(wave+1);
+  const bonus=35+wave*7;budget+=bonus;phase='prep';prepT=0;curScen=planWave(wave+1);
   for(const s of squads)for(const m of s.members)m.hp=Math.min(m.max,m.hp+m.max*.45);
   spawnIntroCrowd(LOW?8:12);
   const nw=SQUADS.filter(d=>d.unlock===wave&&!squads.some(s=>s.def===d));
