@@ -304,6 +304,14 @@ html,body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
 #shopSide .cta:disabled{background:#2a3550;color:#8893aa}
 @media (max-height:460px){#shopCard{padding:10px 12px 10px!important;border-radius:20px!important}#shopCard h2{font-size:26px!important}#shopSide{width:240px;padding:10px}#shopSide h4{font-size:24px}#shopSide p{display:none}.scard{padding:8px 10px;border-radius:14px}.scard .ico{width:36px;height:36px}.scard .t{font-size:13px}#shopList h3{font-size:19px!important;margin:6px 0 6px!important}}
 @media (max-width:640px){#shopSide{display:none}}
+/* accueil 3D : panneau à gauche, scène visible à droite */
+#overlay.m3d{background:linear-gradient(90deg,rgba(6,9,16,.92) 0%,rgba(6,9,16,.72) 34%,rgba(6,9,16,.15) 62%,rgba(6,9,16,0) 78%)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;justify-content:flex-start!important;text-align:left!important;padding-left:calc(28px + env(safe-area-inset-left))!important}
+#overlay.m3d #box{max-width:400px;text-align:left}
+body.m3d #hud,body.m3d #actions,body.m3d #joyZone,body.m3d #squadCol,body.m3d #fsHint,body.m3d #banner,body.m3d #help,body.m3d #status,body.m3d #speech{display:none!important}
+#overlay.m3d #box h1{font-size:clamp(48px,9vw,84px)!important;text-shadow:0 4px 18px rgba(0,0,0,.6)}
+#overlay.m3d #box h1::after{margin:12px 0 10px!important}
+#overlay.m3d .modes{justify-content:flex-start}
+#overlay.m3d #go{margin-top:14px;font-size:18px;padding:16px 56px!important;box-shadow:0 10px 30px rgba(245,197,30,.35)}
 #zoomB{position:static!important;flex-direction:row!important;margin-left:auto;pointer-events:auto;gap:6px!important}
 #hbtns{margin-left:0!important}
 @media (max-width:900px){#stats .mini{display:none}}
@@ -2641,6 +2649,7 @@ function reset(){
 function startGame(){
   if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
   try{if(AC&&AC.resume)AC.resume();}catch(e){}
+  if(typeof menuStage==='function')menuStage(false);
   reset();phase='prep';prepT=0;paused=false;
   $('overlay').style.display='none';buildChips();if(typeof closeShop==='function')closeShop();try{if(window.speechSynthesis)speechSynthesis.cancel();}catch(e){}
   introT=INTRO_LEN;cheerT=0;spawnIntroCrowd();spawnPress();setRain(Math.random()<.35);
@@ -3107,7 +3116,54 @@ function renderShop(){
 }
 $('speed').addEventListener('pointerdown',e=>{e.preventDefault();timeScale=timeScale===1?2:1;$('speed').textContent='×'+timeScale;});
 function togglePause(){if(!live()||shopOpen)return;paused=!paused;ambMute(paused);$('pause').innerHTML=svg(paused?'play':'pause');$('pauseMenu').style.display=paused?'flex':'none';}
+// ===== menu d'accueil en 3D : le commandant au premier plan, la rue en chaos derrière lui =====
+let MS=null;
+function menuStage(on){
+  if(!on){if(MS){MS.on=false;MS.g.visible=false;}$('overlay').classList.remove('m3d');document.body.classList.remove('m3d');return;}
+  $('overlay').classList.add('m3d');document.body.classList.add('m3d');
+  if(MS){MS.on=true;MS.g.visible=true;return;}
+  const g=new THREE.Group();scene.add(g);
+  const cr=buildCommander();cr.root.position.set(1.25,0,-14);cr.root.rotation.y=.35;g.add(cr.root);
+  const ca={rig:cr,x:1.25,z:-14,walk:0,moving:false,swing:0};
+  const crowd=[],types=['run','run','run','run','chant','chant','chant','throw','throw','throw','mill','mill','run','chant','mill','throw','run','chant'];
+  types.forEach((ty,i)=>{
+    const r=protRig(ty==='throw'?'b':'p');if(ty==='throw')r.sub='b';
+    const a={rig:r,ty,x:rand(-5.2,5.2),z:rand(-31,-18.5),walk:rand(0,20),moving:false,swing:0,spd:rand(2.8,5.2),dir:Math.random()<.5?1:-1,cd:rand(.5,3.5),anim:ty==='chant'?'chant':'walk',wt:null};
+    r.root.scale.setScalar(r.sc||1);g.add(r.root);crowd.push(a);});
+  const fires=[[-3.4,-21],[2.8,-25.5],[-.6,-29]].map(([x,z],i)=>{
+    const L=new THREE.PointLight(0xff7a2a,2,10,2);L.position.set(x,1.1,z);g.add(L);
+    if(i!==1){const bin=mk(new THREE.CylinderGeometry(.32,.28,.8,10,1,true),stdMat({color:0x3a3d40,metalness:.6,roughness:.5,side:THREE.DoubleSide}));bin.position.set(x,.4,z);g.add(bin);}
+    else{const car=mk(new THREE.BoxGeometry(1.8,.9,3.8),stdMat({color:0x1d1d1f,roughness:.9}));car.position.set(x,.55,z);car.rotation.y=.5;g.add(car);}
+    return {x,z,L,big:i===1};});
+  const gasL=new THREE.PointLight(0xff2a2a,1.2,7,2);g.add(gasL);
+  MS={g,ca,crowd,fires,gasL,t:0,on:true};
+}
+function menuUpdate(dt){
+  const M=MS;M.t+=dt;const t=M.t;
+  M.ca.tt=t;M.ca.rig.pose(M.ca);
+  for(const a of M.crowd){const r=a.rig;
+    if(a.ty==='run'){a.x+=a.dir*a.spd*dt;a.walk+=a.spd*dt;a.moving=true;r.root.rotation.y=a.dir>0?Math.PI/2:-Math.PI/2;
+      if(Math.abs(a.x)>7){a.dir=-a.dir;a.z=rand(-31,-18.5);a.spd=rand(2.8,5.2);}}
+    else if(a.ty==='mill'){if(!a.wt||Math.hypot(a.wt[0]-a.x,a.wt[1]-a.z)<.3)a.wt=[rand(-5,5),rand(-30,-19)];
+      const dx=a.wt[0]-a.x,dz=a.wt[1]-a.z,d=Math.hypot(dx,dz),v=1.4;a.x+=dx/d*v*dt;a.z+=dz/d*v*dt;a.walk+=v*dt;a.moving=true;r.root.rotation.y=Math.atan2(dx,dz);}
+    else{a.moving=false;r.root.rotation.y=Math.atan2(M.ca.x-a.x,M.ca.z-a.z)*.6;
+      if(a.ty==='throw'){a.cd-=dt;if(a.cd<=0){a.cd=rand(2.2,4.2);a.swing=.35;}a.swing=Math.max(0,a.swing-dt);
+        if(a.swing>.12&&a.swing<.14)for(let k=0;k<3;k++)P(a.x,1.9,a.z+.3,{c:0xffb050,add:true,life:.35,vz:3,vy:2,s0:.25,s1:.1,a:.9});}}
+    r.root.position.set(a.x,0,a.z);r.pose(a);
+    if(r.flare&&Math.random()<.5)P(a.x+rand(-.15,.15),2.05,a.z,{c:0xff3020,add:true,life:.5,vy:.9,s0:.35,s1:.9,a:.8});
+  }
+  for(const f of M.fires){f.L.intensity=1.7+Math.random()*.9+(f.big?.6:0);
+    const n=f.big?3:2;for(let k=0;k<n;k++)if(Math.random()<.8)P(f.x+rand(-.3,.3)*(f.big?2:1),f.big?1.05:.85,f.z+rand(-.3,.3)*(f.big?2:1),{c:Math.random()<.5?0xff8a2a:0xffc040,add:true,life:rand(.4,.8),vy:rand(1.2,2.2),s0:rand(.5,.8),s1:.12,a:.9});
+    if(Math.random()<.35)P(f.x,1.8,f.z,{c:0x3c3c3e,life:3.2,vy:.9,vx:.25,s0:1,s1:3.4,a:.32});}
+  // lacrymo au sol et fumigène rouge
+  if(Math.random()<.25)P(rand(-5,4),.4,rand(-27,-17),{c:0xd8dde2,life:4,vy:.12,vx:rand(-.2,.2),s0:1.4,s1:4,a:.16});
+  const gx=-1.8+Math.sin(t*.4)*2.5;M.gasL.position.set(gx,1.6,-22);M.gasL.intensity=1+Math.random()*.5;
+  if(Math.random()<.6)P(gx,1.4,-22,{c:0xff3a2a,add:true,life:.9,vy:.7,s0:.5,s1:1.6,a:.5});
+  // caméra : plan rapproché sur le commandant, léger mouvement
+  camera.position.set(2.6+Math.sin(t*.23)*.22,1.5+Math.sin(t*.31)*.05,-11.2);camera.lookAt(-1.1+Math.sin(t*.17)*.15,1.4,-14.8);sky.position.copy(camera.position);
+}
 function startScreen(){
+  menuStage(true);
   const r=loadRecord();
   $('box').innerHTML='<div class="kick">Maintien de l\'ordre</div><h1>Tenir la rue</h1><p id="rec">'+(r.wave?'Record : vague <b>'+r.wave+'</b> · <b>'+r.score+'</b> pts':'Tenez la rue le plus longtemps possible')+'</p>'+
     '<div class="modes"><button class="mode sel" id="mSolo"><b>Solo</b><span>Survie · vagues sans fin</span></button>'+
@@ -3226,7 +3282,7 @@ function loop(){
   const dt=Math.min(clock.getDelta(),.05);
   if(live()&&!paused){for(let i=0;i<timeScale;i++)update(dt);}
   ambientFx(dt);updateAim();updateHeli(paused?0:dt);if(!paused)updateRain(dt);if(!live()||paused)updateParticles(paused?0:dt);
-  if(cmd&&live())updateCamera(dt);else if(phase==='menu'||phase==='over'||phase==='win'){camYaw+=dt*.08;camera.position.set(Math.sin(camYaw)*30,12,Math.cos(camYaw)*10+16);camera.lookAt(0,2,0);sky.position.copy(camera.position);}
+  if(MS&&MS.on&&!live())menuUpdate(dt);else if(cmd&&live())updateCamera(dt);else if(phase==='menu'||phase==='over'||phase==='win'){camYaw+=dt*.08;camera.position.set(Math.sin(camYaw)*30,12,Math.cos(camYaw)*10+16);camera.lookAt(0,2,0);sky.position.copy(camera.position);}
   if(phase!=='menu')hud(dt);
   renderer.render(scene,camera);
   shopPreviews(dt);
