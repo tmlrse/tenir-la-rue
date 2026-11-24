@@ -1697,6 +1697,7 @@ const POPS=[];
 for(let i=0;i<6;i++){const c=document.createElement('canvas');c.width=512;c.height=96;const t=new THREE.CanvasTexture(c);
   const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthWrite:false,depthTest:false,fog:false}));s.scale.set(3.2,.6,1);s.visible=false;s.renderOrder=10;scene.add(s);POPS.push({s,c,t,life:0});}
 let popI=0;
+const BAVURES=['bavure grossophobe','bavure raciste','réponse disproportionnée','bavure antisémite','bavure fasciste'];
 function popupText(txt,col,x,z){
   const p=POPS[popI++%POPS.length],c=p.c.getContext('2d');c.clearRect(0,0,512,96);
   c.font='800 46px system-ui,Arial';c.textAlign='center';c.textBaseline='middle';c.lineWidth=9;c.strokeStyle='rgba(0,0,0,.75)';c.strokeText(txt,256,50);c.fillStyle=col;c.fillText(txt,256,50);
@@ -2318,10 +2319,10 @@ let combo=0,comboT=-99;
 function judgeStrike(t){
   const aggressive=(gT-(t.lastAtk||-99))<3||t.z>LINE_Z-4;
   if(t.down>0||t.stun>0||t.arrested||!aggressive)combo=0;
-  if(t.down>0||t.stun>0||t.arrested){score-=20;tension=Math.min(100,tension+10);popupText('−20 · personne à terre','#ff5a4f',t.x,t.z);SND.bad();}
+  if(t.down>0||t.stun>0||t.arrested){score-=20;tension=Math.min(100,tension+10);popupText('−20 · '+pick(BAVURES),'#ff5a4f',t.x,t.z);SND.bad();}
   else if(aggressive){combo=(gT-comboT<4)?Math.min(5,combo+1):1;comboT=gT;const pts=10*combo;score+=pts;budget+=2*combo;
     popupText(combo>1?'+'+pts+' · série ×'+combo:'+10 · dans les clous',combo>1?'#ffd23f':'#5ee07a',t.x,t.z);if(combo>1)beep(380+combo*90,.07,'triangle',.03);}
-  else{score-=15;tension=Math.min(100,tension+6);popupText('−15 · hors des clous','#ff5a4f',t.x,t.z);SND.bad();}
+  else{score-=15;tension=Math.min(100,tension+6);popupText('−15 · '+pick(BAVURES),'#ff5a4f',t.x,t.z);SND.bad();}
   if(t.down>0||t.stun>0||t.arrested||!aggressive)for(const o of agents)if(o.side==='e'&&!o.dying&&Math.hypot(o.x-t.x,o.z-t.z)<7)o.agit=(o.agit||0)+.45;
 }
 function nearestFriend(e,friends){let b=null,bd=1e9;for(const f of friends){const d=Math.hypot(f.x-e.x,f.z-e.z);if(d<bd){bd=d;b=f;}}return b;}
@@ -2742,7 +2743,7 @@ function interpel(){
   for(const e of agents){if(e.side!=='e'||e.dying||!e.marked)continue;if(!(e.down>0||e.stun>0||e.hp<e.max*.35))continue;const d=Math.hypot(e.x-cmd.x,e.z-cmd.z);if(d<bd){bd=d;best=e;}}
   if(!best){banner('Aucun casseur marqué à portée',900);return;}
   const legit=(gT-(best.lastAtk||-99))<6||best.kind==='b';
-  if(legit){score+=10;popupText('+10 · interpellation dans les clous','#5ee07a',best.x,best.z);}else{score-=5;tension=Math.min(100,tension+3);popupText('−5 · interpellation douteuse','#ff5a4f',best.x,best.z);}
+  if(legit){score+=10;popupText('+10 · interpellation dans les clous','#5ee07a',best.x,best.z);}else{score-=5;tension=Math.min(100,tension+3);popupText('−5 · '+pick(BAVURES),'#ff5a4f',best.x,best.z);}
   faceTo(cmd,best.x,best.z);cmd.swing=.3;kill(best);SND.cuffs(best.x,best.z);
 }
 function groupTargets(list,x,z){
