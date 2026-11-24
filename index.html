@@ -388,7 +388,7 @@ const IS_TOUCH=('ontouchstart' in window)||(typeof navigator!=='undefined'&&navi
 const LOW=IS_TOUCH||Math.min(innerWidth,innerHeight)<640;
 const CFG={startBudget:320,startLives:10,income:1.2,maxWave:Infinity,hpGrowth:.2,firstPrep:30,prep:18,
   reinforceCost:30,upgradeBase:70,upgradeMax:3,
-  commanderHp:240,gatRange:26,commanderSpeed:5.6,strikeDmg:18,strikeCd:.34,strikeReach:2.4};
+  commanderHp:240,gatRange:26,commanderSpeed:3.6,strikeDmg:18,strikeCd:.34,strikeReach:2.4};
 const STREET_X=5.2,LINE_Z=18,SPAWN_Z=-56;
 const SOLDIER={
   shield:{name:'Boucliers',hp:130,r:.42,w:3,dmg:10,rate:.8,reach:1.45},
@@ -402,9 +402,9 @@ const SQUADS=[
   {name:'GAT',type:'gat',n:3,color:0xa3e05a,x:-2.6,z:15.2,fo:[-2.6,8],unlock:-1,cost:220,from:2},
   {name:'CANON À EAU',type:'water',n:1,color:0xc77dff,x:0,z:12,fo:[0,10.5],unlock:5}];
 const ENEMY={
-  p:{hp:45,speed:1.5,dmg:6,rate:1.0,leak:1,reward:8,r:.45,w:1,aggro:4.5},
-  b:{hp:80,speed:2.4,dmg:9,rate:1.0,leak:2,reward:14,r:.45,w:1,aggro:9,ranged:true},
-  l:{hp:520,speed:1.15,dmg:15,rate:1.2,leak:5,reward:120,r:.7,w:3,aggro:6}};
+  p:{hp:45,speed:1.8,dmg:6,rate:1.0,leak:1,reward:8,r:.45,w:1,aggro:4.5},
+  b:{hp:80,speed:3.0,dmg:9,rate:1.0,leak:2,reward:14,r:.45,w:1,aggro:9,ranged:true},
+  l:{hp:520,speed:1.5,dmg:15,rate:1.2,leak:5,reward:120,r:.7,w:3,aggro:6}};
 const SHOP=[
   {id:'lacry',kind:'gren',name:'Grenade lacrymogène CS',short:'Lacrymo',desc:'Fumigène : reste au sol et libère un nuage irritant qui ralentit et blesse.',qty:3,cost:30},
   {id:'gmd',kind:'gren',name:'GENL · désencerclement',short:'GENL',desc:'Projection de 18 plots en caoutchouc : blesse et repousse autour de l\'impact.',qty:2,cost:45},
@@ -2167,7 +2167,7 @@ function makeEnemy(t,o){
   else{if(grpLeft<=0){grpLeft=(3+Math.random()*4)|0;grpX=rand(-3.8,3.8);grpId++;}grpLeft--;}
   const a=newAgent({side:'e',kind:t,build:t==='p'?buildProtester:t==='b'?buildBloc:buildLeader,x:clamp(grpX+rand(-1.3,1.3),-STREET_X+.3,STREET_X-.3),z:SPAWN_Z-rand(0,3),hp:d.hp*hpMul,r:d.r,w:d.w,
     speed:d.speed*rand(.9,1.1),dmg:d.dmg,rate:d.rate,leak:d.leak,reward:d.reward,ranged:!!d.ranged,aggro:d.aggro,barY:t==='l'?3.5:2.5,barW:t==='l'?1.7:1.0});
-  a.baseR=0;a.baseL=0;a.mort=rand(3,9);a.grp=grpId;if(t==='b')mark(a);a.agit=t==='p'?(Math.random()<.2?rand(.5,.8):rand(0,.35)):.5;a.anim='walk';
+  a.baseR=0;a.baseL=0;a.mort=rand(3,9);a.grp=grpId;a.agit=t==='p'?(Math.random()<.2?rand(.5,.8):rand(0,.35)):.5;a.anim='walk';
   if(o){a.lane=o.x;if(t==='p'&&o.agit!==undefined)a.agit=clamp(o.agit+rand(-.15,.15),0,1.1);}
   return a;
 }
@@ -2241,11 +2241,11 @@ function needRelief(m){
 function threatDir(m){const t=nearestEnemy(m.x,m.z,14);if(t)faceTo(m,t.x,t.z);}
 function knockDown(t){if(t.kind==='l'||t.dying)return;t.down=1.8;t.moving=false;P(t.x,.3,t.z,{c:0x9a8f80,vy:.4,life:.6,s0:.8,s1:1.8,a:.35});}
 function updateInterv(m,sq,sx,sz,dt,sm){
-  if(m.escort){const t=m.escort;if(!t.arrested||agents.indexOf(t)<0){m.escort=null;}else{if(t.arrT>1)stepToward(m,t.x+.55,t.z-.45,3.2,dt);faceTo(m,t.x,t.z);return;}}
+  if(m.escort){const t=m.escort;if(!t.arrested||agents.indexOf(t)<0){m.escort=null;}else{if(t.arrT>1)stepToward(m,t.x+.55,t.z-.45,2.6,dt);faceTo(m,t.x,t.z);return;}}
   const D=SOLDIER.interv,hunt=(sq.def.hunt||3.2)+(sq.order==='charge'?2:0);
-  if(needRelief(m)){stepToward(m,sx,sz+2.6,4.5*sm,dt);m.faceT=Math.PI;return;}
+  if(needRelief(m)){stepToward(m,sx,sz+2.6,2.8*sm,dt);m.faceT=Math.PI;return;}
   if(m.chase&&Math.hypot(m.x-sx,m.z-sz)>hunt+3.5){m.chase=0;m.giveUp=gT+1.5;}   // ne pas s'isoler dans la foule
-  if(m.giveUp>gT){stepToward(m,sx,sz,6*sm,dt);threatDir(m);return;}
+  if(m.giveUp>gT){stepToward(m,sx,sz,3.4*sm,dt);threatDir(m);return;}
   let t=null,bd=hunt;
   // protéger le chef : un agresseur au contact du commandant est prioritaire
   if(cmd&&!cmd.dying){let b2=11;for(const e of agents){if(e.side!=='e'||e.dying||e.arrested)continue;if(Math.hypot(e.x-cmd.x,e.z-cmd.z)<2.4){const d=Math.hypot(e.x-m.x,e.z-m.z);if(d<b2){b2=d;t=e;}}}}
@@ -2253,28 +2253,28 @@ function updateInterv(m,sq,sx,sz,dt,sm){
   if(!t){let b3=3.2;for(const e of agents){if(e.side!=='e'||e.dying||e.arrested||!e.breacher||e.z<sz-2.5)continue;const d=Math.hypot(e.x-m.x,e.z-m.z);if(d<b3){b3=d;t=e;bd=d;}}}   // repousse ceux qui tentent de franchir le cordon
   if(t){
     const d=Math.hypot(t.x-m.x,t.z-m.z);faceTo(m,t.x,t.z);
-    m.chase=1;if(d>D.reach*.85)stepToward(m,t.x,t.z,5.2*sm,dt);
+    m.chase=1;if(d>D.reach*.85)stepToward(m,t.x,t.z,2.7*sm,dt);
     m.cd-=dt;
     if(d<=D.reach&&m.cd<=0){SND.hit(t.x,t.z);dmg(t,D.dmg*m.dmgMul*dmgBoost*(t.down>0?1.4:1));if(!t.dying&&Math.random()<.4)knockDown(t);scareAround(t.x,t.z,null);m.cd=D.rate;m.swing=.3;P(t.x,1.2,t.z,{c:0xffffff,add:true,life:.2,s0:.6,s1:1.2,a:.6});}
-  }else{m.chase=0;if(stepToward(m,sx,sz,6*sm,dt)<.1)threatDir(m);}
+  }else{m.chase=0;if(stepToward(m,sx,sz,3.4*sm,dt)<.1)threatDir(m);}
 }
 function updateSoldier(m,dt){
   DT=dt;
   const sq=m.squad;let lx,lz;
   if(sq.def.pairs)[lx,lz]=pairSlot(sq,m);else{const i=sq.members.indexOf(m);[lx,lz]=slotLocal(sq,i,sq.members.length);}
   const sm=sq.def.spdMul||1;
-  if(sq.type!=='shield'){if(stepToward(m,sq.ax+lx,sq.az+lz,m.kind==='water'?3.6:6,dt)<.1)threatDir(m);return;}
+  if(sq.type!=='shield'){if(stepToward(m,sq.ax+lx,sq.az+lz,m.kind==='water'?2.6:3.4,dt)<.1)threatDir(m);return;}
   if(m.role==='interv'){updateInterv(m,sq,sq.ax+lx,sq.az+lz,dt,sm);return;}
   const sx=sq.ax+lx,sz=sq.az+lz,distSlot=Math.hypot(m.x-sx,m.z-sz),charge=sq.order==='charge';
-  if(needRelief(m)){stepToward(m,sx,sz+2.8,4*sm,dt);m.faceT=Math.PI;return;}
+  if(needRelief(m)){stepToward(m,sx,sz+2.8,2.6*sm,dt);m.faceT=Math.PI;return;}
   // la ligne reste soudée : un bouclier ne quitte sa place que d'un pas (sauf charge)
   const leash=charge?5.5:sq.order==='hold'?1.5:.9,engage=charge?6:SOLDIER.shield.reach+(sq.order==='hold'?1.2:.6);
   const t=nearestEnemy(m.x,m.z,engage);m.cd-=dt;
   if(t&&distSlot<leash){
     const d=Math.hypot(t.x-m.x,t.z-m.z);faceTo(m,t.x,t.z);
-    if(d>SOLDIER.shield.reach*.85)stepToward(m,t.x,t.z,(charge?4.4:2.2)*sm,dt);
+    if(d>SOLDIER.shield.reach*.85)stepToward(m,t.x,t.z,(charge?2.9:1.6)*sm,dt);
     if(d<=SOLDIER.shield.reach&&m.cd<=0){SND.shield(t.x,t.z);dmg(t,(charge?15:SOLDIER.shield.dmg)*m.dmgMul*dmgBoost);m.cd=SOLDIER.shield.rate*rand(.85,1.15);m.swing=.3;scareAround(t.x,t.z,t);P(t.x,1.2,t.z,{c:0xffffff,add:true,life:.2,s0:.6,s1:1.2,a:.6});}
-  }else{if(stepToward(m,sx,sz,(distSlot>2?6:3.2)*sm,dt)<.1)threatDir(m);}
+  }else{if(stepToward(m,sx,sz,(distSlot>2?3.4:2.2)*sm,dt)<.1)threatDir(m);}
 }
 function updateDecor(a,dt){
   if(a.press){updatePress(a,dt);return;}
@@ -2332,7 +2332,7 @@ function updateEnemy(e,dt,leaders,friends){
   e.slow=Math.max(0,e.slow-dt);
   if(e.stun>0){e.stun-=dt;e.moving=false;if(Math.random()<dt*4)P(e.x+rand(-.2,.2),2.3,e.z,{c:0xfff08a,add:true,life:.35,s0:.35,s1:.1,a:.9,vy:.4});return;}
   const spd=e.speed*(e.slow>0?.5:1)*boost;
-  if(e.kind==='b'&&wave>=3){e.mort-=dt;if(e.mort<=0){e.mort=rand(8,14);let best=null,b2=16;for(const f of friends){const d=Math.hypot(f.x-e.x,f.z-e.z);if(d>5.5&&d<b2){b2=d;best=f;}}if(best){fireMortar(e,best);e.lastAtk=gT;}}}
+  if(e.kind==='b'&&wave>=3){e.mort-=dt;if(e.mort<=0){e.mort=rand(8,14);let best=null,b2=16;for(const f of friends){const d=Math.hypot(f.x-e.x,f.z-e.z);if(d>5.5&&d<b2){b2=d;best=f;}}if(best){mark(e);fireMortar(e,best);e.lastAtk=gT;}}}
   e.age=(e.age||0)+dt;
   // gaz : la plupart fuient en se couvrant le visage
   if(e.gassedT!==undefined&&gT-e.gassedT<.25&&!(e.fleeCd>gT)){e.fleeCd=gT+6;if(e.kind!=='l'&&Math.random()<(e.kind==='b'?.35:.75)){e.flee=rand(2.5,4.5);e.agit=Math.max(.15,(e.agit||0)-.45);}}
@@ -2359,7 +2359,7 @@ function updateEnemy(e,dt,leaders,friends){
     // jets de bouteilles des plus excités, à distance
     if((e.agit||0)>.95&&tgt&&bd>4&&bd<9){e.thr2=(e.thr2===undefined?rand(3,8):e.thr2)-dt;
       if(e.thr2<=0){e.thr2=rand(7,13);const v=tgt,to=new THREE.Vector3(v.x,1,v.z);e.swing=.35;e.lastAtk=gT;
-        mark(e);launchProj(new THREE.Vector3(e.x,1.8,e.z),to,.55,0x3f7a4a,()=>{SND.glass(to.x,to.z);if(!v.dying&&v.hp>0)dmg(v,4);P(to.x,.4,to.z,{c:0x8fc8a0,life:.3,s0:.4,s1:1,a:.5});},.12,false);}}
+        mark(e);throwObj(e,v,pick(['bottle','bottle','can','bottle']),4);}}
     if(tgt&&bd<6&&e.anim!=='push')e.agit=Math.min(1.4,(e.agit||0)+dt*(.03+.012*near+(boost>1?.06:0)));
     else if(!tgt)e.agit=Math.max(0,(e.agit||0)-dt*.05);
     let block=null;for(const f of friends){const dx=f.x-e.x,dz=f.z-e.z;if(dz>-.3&&dz<2.8&&Math.abs(dx)<1.3){block=f;break;}}
@@ -2398,19 +2398,12 @@ function updateEnemy(e,dt,leaders,friends){
       faceTo(e,tgt.x,tgt.z);
       const isolated=!friends.some(f=>f!==tgt&&Math.hypot(f.x-tgt.x,f.z-tgt.z)<2.6);
       if((isolated&&bd<5&&(tgt!==cmd||bd<3))||bd<1.6){
-        e.anim='push';if(bd>1.3)stepToward(e,tgt.x,tgt.z,spd*1.25,dt);else if(e.cd<=0){dmg(tgt,e.dmg);e.cd=e.rate;e.swing=.3;e.lastAtk=gT;}
+        e.anim='push';if(bd>1.3)stepToward(e,tgt.x,tgt.z,spd*1.25,dt);else if(e.cd<=0){mark(e);dmg(tgt,e.dmg);e.cd=e.rate;e.swing=.3;e.lastAtk=gT;}
       }else if(bd<=8.5){
         e.anim='idle';e.thr-=dt;
         if(e.thr<=0){
-          const fire=Math.random()<.35,victim=tgt;
-          const from=new THREE.Vector3(e.x,1.9,e.z),to=new THREE.Vector3(tgt.x,1,tgt.z);
-          launchProj(from,to,.6,fire?0xff7a20:0x6b6358,()=>{
-            if(fire)SND.molotov(to.x,to.z);else SND.glass(to.x,to.z);
-            if(!victim.dying&&victim.hp>0)dmg(victim,fire?9:6);
-            if(fire)fires.push({x:to.x,z:to.z,life:3.5,t:0});
-            if(fire)for(let k=0;k<9;k++)P(to.x+rand(-.5,.5),.4,to.z+rand(-.5,.5),{c:0xff8a2a,add:true,vy:rand(1,3),life:rand(.4,.8),s0:1.1,s1:.3,a:.9});
-            else P(to.x,.4,to.z,{c:0x998877,life:.4,s0:.5,s1:1.4,a:.4});
-          },fire?.2:.14,fire);
+          const r=Math.random(),kind=r<.3?'molotov':r<.55?'pave':r<.8?'brick':'bottle';
+          mark(e);throwObj(e,tgt,kind,kind==='molotov'?9:kind==='bottle'?5:7);
           e.thr=rand(2,3.2);e.swing=.35;e.lastAtk=gT;
           setTimeout(()=>{e.retreat=rand(.9,1.6);e.strafe=rand(-2.2,2.2);},350);
         }
@@ -2425,7 +2418,7 @@ function updateEnemy(e,dt,leaders,friends){
     // meneur : harangue derrière la foule puis mène la charge
     if(tgt){
       faceTo(e,tgt.x,tgt.z);
-      if(e.age>22||bd<1.6){e.anim='push';if(bd>1.35)stepToward(e,tgt.x,tgt.z,spd,dt);else if(e.cd<=0){dmg(tgt,e.dmg);e.cd=e.rate;e.swing=.3;e.lastAtk=gT;}}
+      if(e.age>22||bd<1.6){e.anim='push';if(bd>1.35)stepToward(e,tgt.x,tgt.z,spd,dt);else if(e.cd<=0){mark(e);dmg(tgt,e.dmg);e.cd=e.rate;e.swing=.3;e.lastAtk=gT;}}
       else{e.anim='chant';if(bd<4.5)stepToward(e,e.x,e.z-1,spd*.5,dt);else if(bd>5.5)stepToward(e,tgt.x,tgt.z,spd*.6,dt);}
     }else{e.anim='walk';e.faceT=0;stepToward(e,e.x,e.z+1.5,spd,dt);}
   }
@@ -2438,6 +2431,46 @@ function launchProj(from,to,dur,color,onHit,size,fire,arc,mesh,keep){
   const own=!mesh,m=mesh||new THREE.Mesh(new THREE.SphereGeometry(size||.15,8,6),new THREE.MeshBasicMaterial({color}));scene.add(m);
   if(mesh)m.rotation.set(rand(0,3),rand(0,3),0);
   projs.push({m,from:from.clone(),to:to.clone(),t:0,dur,onHit,fire,arc:arc||2.4,own,keep,sx:rand(8,13),sz:rand(-4,4)});
+}
+/* ---------- objets lancés : bouteilles, canettes, briques, pavés, cocktails Molotov ---------- */
+const THR={};
+function thrInit(){
+  if(THR.ok)return;THR.ok=1;
+  const prof=[[0,0],[.034,0],[.036,.01],[.036,.16],[.03,.19],[.013,.225],[.012,.28],[.015,.285],[.014,.29],[0,.29]].map(([x,y])=>new THREE.Vector2(x,y-.145));
+  THR.bottleG=new THREE.LatheGeometry(prof,10);
+  const glass=(c)=>new THREE.MeshStandardMaterial({color:c,roughness:.12,metalness:.3,transparent:true,opacity:.82,emissive:c,emissiveIntensity:.18});
+  THR.green=glass(0x2f7a3c);THR.brown=glass(0x6a3a12);THR.clear=glass(0xbfd8d4);
+  THR.labelG=new THREE.CylinderGeometry(.0375,.0375,.07,10,1,true);THR.labelM=new THREE.MeshStandardMaterial({color:0xe8dcc0,roughness:.7,side:THREE.DoubleSide});
+  THR.ragG=new THREE.ConeGeometry(.022,.09,6);THR.ragM=new THREE.MeshStandardMaterial({color:0xd8cfb8,roughness:1,emissive:0xff5a10,emissiveIntensity:.6});
+  THR.brickG=new THREE.BoxGeometry(.22,.068,.105);
+  THR.brickM=new THREE.MeshStandardMaterial({map:canvasTex(64,32,(c,w,h)=>{c.fillStyle='#a8442a';c.fillRect(0,0,w,h);for(let i=0;i<220;i++){c.fillStyle=pick(['#8c3420','#bf5634','#93402a','#c86a48']);c.fillRect(Math.random()*w,Math.random()*h,2,2);}c.fillStyle='rgba(0,0,0,.18)';c.fillRect(0,h-3,w,3);}),roughness:.95});
+  THR.paveG=new THREE.BoxGeometry(.13,.12,.13);
+  THR.paveM=new THREE.MeshStandardMaterial({map:canvasTex(32,32,(c,w,h)=>{c.fillStyle='#7d7e80';c.fillRect(0,0,w,h);for(let i=0;i<160;i++){c.fillStyle=pick(['#66676a','#9a9b9e','#8a8378','#5a5b5e']);c.fillRect(Math.random()*w,Math.random()*h,2,2);}}),roughness:.9});
+  THR.canG=new THREE.CylinderGeometry(.033,.033,.12,10);
+  THR.canM=[0xc8202a,0x1c5ac8,0xd8d8d8].map(c=>new THREE.MeshStandardMaterial({color:c,metalness:.8,roughness:.3}));
+}
+function thrMesh(kind){
+  thrInit();let m;
+  if(kind==='brick')m=new THREE.Mesh(THR.brickG,THR.brickM);
+  else if(kind==='pave')m=new THREE.Mesh(THR.paveG,THR.paveM);
+  else if(kind==='can')m=new THREE.Mesh(THR.canG,pick(THR.canM));
+  else{m=new THREE.Group();const b=new THREE.Mesh(THR.bottleG,kind==='molotov'?THR.clear:pick([THR.green,THR.brown,THR.green]));m.add(b);
+    if(kind!=='molotov'){const l=new THREE.Mesh(THR.labelG,THR.labelM);l.position.y=-.06;m.add(l);}
+    else{const r=new THREE.Mesh(THR.ragG,THR.ragM);r.position.y=.18;m.add(r);}}
+  m.scale.setScalar(1.6);return m;
+}
+// lance un objet modélisé ; dégâts + son + débris adaptés
+function throwObj(e,v,kind,dmgv){
+  const from=new THREE.Vector3(e.x,1.85,e.z),to=new THREE.Vector3(v.x+rand(-.25,.25),1,v.z+rand(-.25,.25)),fire=kind==='molotov',hard=kind==='brick'||kind==='pave';
+  const dist=Math.hypot(to.x-from.x,to.z-from.z);
+  launchProj(from,to,.45+dist*.035,0,()=>{
+    if(fire)SND.molotov(to.x,to.z);else if(hard)SND.thud(to.x,to.z);else if(kind==='can')SND.punch(to.x,to.z);else SND.glass(to.x,to.z);
+    if(!v.dying&&v.hp>0)dmg(v,dmgv);
+    if(fire){fires.push({x:to.x,z:to.z,life:3.5,t:0});for(let k=0;k<9;k++)P(to.x+rand(-.5,.5),.4,to.z+rand(-.5,.5),{c:0xff8a2a,add:true,vy:rand(1,3),life:rand(.4,.8),s0:1.1,s1:.3,a:.9});}
+    else if(hard)for(let k=0;k<6;k++)P(to.x,.9,to.z,{c:kind==='brick'?0xa04a30:0x8a8a8a,vx:rand(-1.5,1.5),vy:rand(.5,2.5),vz:rand(-1.5,1.5),life:rand(.3,.6),s0:.12,s1:.05,a:1,g:9});
+    else if(kind!=='can')for(let k=0;k<8;k++)P(to.x,.9,to.z,{c:0xcfe8e0,add:true,vx:rand(-1.8,1.8),vy:rand(.3,2.2),vz:rand(-1.8,1.8),life:rand(.2,.45),s0:.08,s1:.03,a:.9,g:9});
+  },.12,fire,1.6+dist*.06,thrMesh(kind),hard||kind==='can'?.01:0);
+  SND.whoosh(e.x,e.z);
 }
 function updateProjs(dt){
   for(let i=projs.length-1;i>=0;i--){
@@ -2683,10 +2716,10 @@ function updateSquads(dt){
         if(t&&sq.lbdWait<=0){lbdAt(t.x,t.z);sq.lbdWait=1.2;}else if(!t)sq.lbdWait=.6;}}
     if(sq.label){sq.label.visible=sq.members.length>0;sq.label.position.set(sq.ax,sq.type==='water'?4.1:3.7,sq.az);sq.label.material.opacity=sq.sel?1:.55;}
     if(!sq.members.length)continue;
-    let tx=null,tz=null,spd=sq.type==='water'?2.6:3.1;
-    if(sq.order==='follow'){tx=cmd.x+sq.fo[0];tz=cmd.z+sq.fo[1];spd=sq.type==='water'?4:5;}
-    else if(sq.order==='cover'){tx=cmd.x+(sq.fo[0]*.5);tz=cmd.z-2.6;spd=sq.type==='water'?4:5.2;}
-    else if(sq.order==='move'||sq.order==='charge'){tx=sq.tx;tz=sq.tz;if(sq.order==='charge')spd=sq.type==='water'?3.2:4.4;}
+    let tx=null,tz=null,spd=sq.type==='water'?1.4:1.6;
+    if(sq.order==='follow'){tx=cmd.x+sq.fo[0];tz=cmd.z+sq.fo[1];spd=sq.type==='water'?2.2:2.8;}
+    else if(sq.order==='cover'){tx=cmd.x+(sq.fo[0]*.5);tz=cmd.z-2.6;spd=sq.type==='water'?2.2:2.8;}
+    else if(sq.order==='move'||sq.order==='charge'){tx=sq.tx;tz=sq.tz;if(sq.order==='charge')spd=sq.type==='water'?2:2.7;}
     if(sq.form==='tortue')spd*=.6;spd*=sq.def.spdMul||1;
     if(tx!==null){
       tx=clamp(tx,-STREET_X+.6,STREET_X-.6);tz=Math.min(tz,LINE_Z-2);
@@ -2800,7 +2833,7 @@ function startGame(){
 function G(n,x,o){return Object.assign({n,x,b:0,l:0,agit:.25,gap:0},o||{});}
 const SCEN=[
   s=>({n:'Cortège',tip:'Foule calme : place tes sections et observe',g:[G(4,0,{agit:.1}),G(4,-2,{gap:7,agit:.15}),G(5,2,{gap:7,agit:.35})]}),
-  s=>({n:'Premiers casseurs',tip:'Carré rouge = casseur : envoie une section l\'interpeller',g:[G(5,0,{agit:.2}),G(4,-2,{b:1,gap:6,agit:.35}),G(5,2,{b:1,gap:7,agit:.4})]}),
+  s=>({n:'Premiers casseurs',tip:'Un casseur qui lance un objet est marqué d\'un carré rouge : interpelle-le',g:[G(5,0,{agit:.2}),G(4,-2,{b:1,gap:6,agit:.35}),G(5,2,{b:1,gap:7,agit:.4})]}),
   s=>({n:'Débordement '+(s<0?'à gauche':'à droite'),tip:'Ils vont contourner par '+(s<0?'la gauche':'la droite')+' : renforce ce flanc',g:[G(4,0,{agit:.3}),G(6,3.6*s,{b:1,gap:6,agit:.7}),G(6,3.8*s,{b:1,gap:5,agit:.8})]}),
   s=>({n:'Tenaille',tip:'Attaque sur les deux flancs : répartis tes sections',g:[G(5,-3.6,{agit:.7,b:1}),G(5,3.6,{agit:.7,b:1,gap:1.5}),G(5,-3.8,{agit:.8,b:1,gap:8}),G(5,3.8,{agit:.8,b:1,gap:1.5})]}),
   s=>({n:'Le meneur',tip:'Le meneur au drapeau excite la foule : concentre-toi sur lui',g:[G(5,0,{agit:.4}),G(3,0,{l:1,gap:6,agit:.7}),G(4,-2,{gap:1,agit:.6,b:1}),G(4,2,{gap:1,agit:.6,b:1}),G(5,0,{gap:8,agit:.6})]}),
@@ -2860,7 +2893,7 @@ function update(dt){
   else if(phase==='wave'){spawnT-=dt;if(spawnT<=0&&queue.length){makeEnemy(queue.shift());spawnT=queue.length?queue[0].wait:0;}}
   updateSquads(dt);updateAgents(dt);updateClouds(dt);updateProjs(dt);updateGrounded(dt);updateFires(dt);updateRings(dt);updateParticles(dt);
   if(phase==='wave'){let pr=0;for(const e of agents)if(e.side==='e'&&!e.dying&&e.kind!=='b'&&(e.agit||0)>.3)pr+=(e.agit||0)*(e.z>LINE_Z-8?1:.25);
-    tension=clamp(tension+dt*(pr*.22-1.2),0,100);}else tension=Math.max(0,tension-dt*6);
+    tension=clamp(tension+dt*(pr*.18-1.2),0,100);}else tension=Math.max(0,tension-dt*6);
   if(tension>=100){tension=100;endGame(false,'La tension a explosé : la foule a percé vos lignes.');return;}
   if(lives<=0){lives=0;endGame(false);return;}
   if(phase==='wave'&&!queue.length&&!agents.some(a=>a.side==='e'&&!a.dying&&!(a.leaving&&!a.marked)))waveCleared();
@@ -3118,6 +3151,7 @@ const SND=(()=>{
       bp.frequency.setValueAtTime(3200,t);bp.frequency.linearRampToValueAtTime(1700,t+dur);
       s.connect(hp);hp.connect(bp);bp.connect(g);out(g,1,.35);s.start(t,Math.random());l.start(t);s.stop(t+dur+.1);l.stop(t+dur+.1);
       for(let k=0;k<dur*6;k++)noise(t+.2+Math.random()*dur*.8,.01+Math.random()*.02,'highpass',2800,.7,.08*v);},
+    thud(x,z){if(!init())return;const t=T(),v=att(x,z);noise(t,.11,'lowpass',1300,.9,.6*v,.001,.2);tone(t,.09,'triangle',210,90,.3*v);noise(t+.06+Math.random()*.05,.05,'bandpass',2200,2,.15*v,.001,.3);},
     glass(x,z){if(!init())return;const t=T(),v=att(x,z);for(let k=0;k<7;k++)noise(t+k*.018+Math.random()*.02,.05+Math.random()*.07,'bandpass',3000+Math.random()*5000,8,.22*v,.001,.3);},
     molotov(x,z){if(!init())return;const t=T(),v=att(x,z);S.glass(x,z);const f=noise(t+.05,.9,'bandpass',300,.9,.4*v,.1,.3);f.frequency.exponentialRampToValueAtTime(1400,t+.6);
       for(let k=0;k<14;k++)noise(t+.2+Math.random()*1.6,.012,'highpass',2500,.7,.12*v);},
@@ -3583,7 +3617,7 @@ function loop(){
   acc+=dt;frames++;
   if(frames>=120){const avg=acc/frames;if(avg>1/27&&pixRatio>PIX_MIN){pixRatio=Math.max(PIX_MIN,pixRatio-.25);renderer.setPixelRatio(pixRatio);renderer.setSize(innerWidth,innerHeight);}frames=0;acc=0;}
 }
-window.__dbg={agents,squads,lbdAt,SND,get phase(){return phase;},get wave(){return wave;},get lives(){return lives;},get budget(){return budget;},set budget(v){budget=v;},get cmd(){return cmd;},get kills(){return kills;},
+window.__dbg={agents,thrMesh,scene,squads,lbdAt,SND,get phase(){return phase;},get wave(){return wave;},get lives(){return lives;},get budget(){return budget;},set budget(v){budget=v;},get cmd(){return cmd;},get kills(){return kills;},
   orderCharge,orderGas,orderMove,buy,throwGrenade,autoGren,autoGas,gren,openShop,closeShop,get introT(){return introT;},get tension(){return tension;},reinforce,upgrade,selectOnly,selectAll,orderHold,launchWave,startGame,cycleFormation,joy,keys,setStrike:v=>{strikeHeld=v;},update,CFG};
 loop();
 })();
