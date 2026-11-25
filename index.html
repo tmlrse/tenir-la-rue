@@ -302,6 +302,7 @@ html,body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
 #shopSide .row{display:flex;justify-content:space-between;color:#aab6d0;font-size:13px;font-weight:600}
 #shopSide .row b{color:#fff}
 #shopSide p{margin:2px 0 4px;font-size:12px;line-height:1.4;color:#8f9ab2}
+#shopSide .secpick{display:flex;gap:6px}#shopSide .secpick button{flex:1;padding:7px 6px;border-radius:12px;background:var(--nv3);border:2px solid var(--ln);color:#cfd8ea;font-weight:700;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:2px}#shopSide .secpick button.on{border-color:var(--yl);color:#fff}#shopSide .secpick small{font-size:10px;font-weight:600;color:#8f9ab2}
 #shopSide .cta{margin-top:auto;background:var(--yl);color:#15120a;border-radius:16px;padding:14px;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px}
 #shopSide .cta:disabled{background:#2a3550;color:#8893aa}
 @media (max-height:460px){#shopCard{padding:10px 12px 10px!important;border-radius:20px!important}#shopCard h2{font-size:26px!important}#shopSide{width:240px;padding:10px}#shopSide h4{font-size:24px}#shopSide p{display:none}.scard{padding:8px 10px;border-radius:14px}.scard .ico{width:36px;height:36px}.scard .t{font-size:13px}#shopList h3{font-size:19px!important;margin:6px 0 6px!important}}
@@ -397,8 +398,8 @@ const SOLDIER={
   gat:{name:'GAT',hp:85,r:.45,w:2},
   interv:{name:'Intervenant',hp:100,r:.42,w:2,dmg:13,rate:.65,reach:1.5}};
 const SQUADS=[
-  {name:'SECTION 3',type:'shield',n:4,color:0x4aa3ff,x:0,z:9,fo:[0,4],unlock:0,pairs:true,hpMul:1.35,spdMul:.8,hunt:3.2,trait:'Robuste · lente'},
-  {name:'SECTION 1',type:'shield',n:4,color:0x4cc38a,x:2.6,z:9,fo:[2.6,4],unlock:-1,cost:260,from:1,pairs:true,hpMul:.8,spdMul:1.25,hunt:9,huntB:true,trait:'Rapide · interpelle les casseurs'},
+  {name:'SECTION 3',type:'shield',n:4,max:8,color:0x4aa3ff,x:0,z:9,fo:[0,4],unlock:0,pairs:true,hpMul:1.35,spdMul:.8,hunt:3.2,trait:'Robuste · lente'},
+  {name:'SECTION 1',type:'shield',n:0,max:8,color:0x4cc38a,x:2.6,z:9,fo:[2.6,4],unlock:-1,pairs:true,hpMul:.8,spdMul:1.25,hunt:9,huntB:true,trait:'Rapide · interpelle les casseurs'},
   {name:'GAT',type:'gat',n:3,color:0xa3e05a,x:-2.6,z:15.2,fo:[-2.6,8],unlock:-1,cost:220,from:2},
   {name:'CANON À EAU',type:'water',n:1,color:0xc77dff,x:0,z:12,fo:[0,10.5],unlock:5}];
 const ENEMY={
@@ -408,11 +409,12 @@ const ENEMY={
 const SHOP=[
   {id:'lacry',kind:'gren',name:'Grenade lacrymogène CS',short:'Lacrymo',desc:'Fumigène : reste au sol et libère un nuage irritant qui ralentit et blesse.',qty:3,cost:30},
   {id:'gmd',kind:'gren',name:'GENL · désencerclement',short:'GENL',desc:'Projection de 18 plots en caoutchouc : blesse et repousse autour de l\'impact.',qty:2,cost:45},
-  {id:'gm2l',kind:'ammo',name:'GM2L · munition de lanceur',short:'GM2L',desc:'Tirée uniquement au lanceur par le GAT : détonation qui étourdit 3 s et nuage de CS.',qty:3,cost:50},
+  {id:'gm2l',kind:'ammo',name:'GM2L · munition COBRA',short:'GM2L',desc:'Tirée au lanceur COBRA par le GAT : détonation qui étourdit 3 s et nuage de CS. (Le LBD 40, lui, a des munitions illimitées.)',qty:3,cost:50},
   {id:'baton',kind:'upg',name:'Matraques renforcées',short:'Matraques',desc:'+25 % de dégâts au corps à corps pour toute la mission.',cost:90},
   {id:'water',kind:'upg',name:'Plein d\'eau',short:'Eau',desc:'Remplit la citerne du canon à eau.',cost:35},
-  {id:'sec1',kind:'unit',name:'Section 1',desc:'4 agents (boucliers + intervenants), rapides : vont interpeller les casseurs marqués.'},
-  {id:'gat',kind:'unit',name:'GAT · groupe d\'appui tactique',desc:'2 lanceurs COBRA (lacrymo, GM2L, jusqu\'à 26 m) + 1 LBD 40 pour neutraliser un casseur.'}];
+  {id:'ag_shield',kind:'agent',role:'shield',name:'Agent bouclier',desc:'Tient la ligne et encaisse les coups et les projectiles. Il protège l\'intervenant placé derrière lui.',cost:70},
+  {id:'ag_interv',kind:'agent',role:'interv',name:'Agent intervenant',desc:'Tonfa et menottes : il interpelle les casseurs marqués. Sans bouclier devant lui, il prend les projectiles de plein fouet.',cost:55},
+  {id:'gat',kind:'unit',name:'GAT · groupe d\'appui tactique',desc:'2 lanceurs COBRA (lacrymo, GM2L, jusqu\'à 26 m) + 1 LBD 40 à munitions illimitées pour neutraliser un casseur.'}];
 const ORDER_LABEL={hold:'En position',move:'Déplacement',follow:'Vous suit',charge:'Charge !',cover:'Vous couvre'};
 const FORM_LABEL={line:'Ligne',column:'Colonne',wedge:'Coin',tortue:'Tortue',cercle:'Cercle'};
 
@@ -2183,6 +2185,8 @@ function slotLocal(sq,i,n){
 function dmg(a,amount){
   if(!a||a.dying)return;
   if(a.role==='shield'&&a.squad){if(a.squad.form==='tortue')amount*=.5;else if(a.squad.form==='cercle')amount*=.75;}
+  // un intervenant est protégé s'il a un bouclier de sa section juste devant lui, sinon il prend tout
+  if(a.role==='interv'&&a.squad){const cov=a.squad.members.some(s=>s.role==='shield'&&!s.dying&&s.z<a.z+.2&&a.z-s.z<2.2&&Math.abs(s.x-a.x)<1.1);amount*=cov?.45:1.5;}
   a.hp-=amount;a.hit=.12;if(a.side==='e')a.lastHitT=gT;
   if(a===cmd){shake=Math.max(shake,.25);vibe(40);const h=$('hurt');h.style.opacity=.9;setTimeout(()=>{h.style.opacity=0;},140);}
   if(a.hp<=0)kill(a);
@@ -2699,7 +2703,7 @@ const selectAll=()=>squads.forEach(s=>{s.sel=true;});
 function createSquads(){for(const def of SQUADS)if(!def.unlock)addSquad(def);}
 function addSquad(def,arrive){
   {
-    const sq={def,name:def.name,type:def.type,color:def.color,fo:def.fo,members:[],order:'hold',form:'line',lvl:0,ax:def.x,az:def.z,tx:def.x,tz:def.z,cd:2,sel:false,
+    const sq={def,name:def.name,type:def.type,color:def.color,fo:def.fo,members:[],cap:def.n,want:{shield:def.pairs?Math.ceil(def.n/2):0,interv:def.pairs?Math.floor(def.n/2):0},order:'hold',form:'line',lvl:0,ax:def.x,az:def.z,tx:def.x,tz:def.z,cd:2,sel:false,
       ringMat:new THREE.MeshBasicMaterial({color:def.color,transparent:true,opacity:.35,depthWrite:false})};
     sq.flag=new THREE.Mesh(new THREE.ConeGeometry(.35,1.2,8),new THREE.MeshBasicMaterial({color:def.color}));sq.flag.rotation.x=Math.PI;sq.flag.position.y=.6;sq.flag.visible=false;scene.add(sq.flag);
     sq.label=textSprite(def.name,hex(def.color));
@@ -2786,11 +2790,12 @@ function cycleFormation(){
 function reinforce(){
   const list=selected();if(!list.length)return;
   for(const s of list){
-    const missing=s.def.n-s.members.length,hurt=s.members.some(m=>m.hp<m.max*.9);
+    const missing=s.cap-s.members.length,hurt=s.members.some(m=>m.hp<m.max*.9);
     if(!missing&&!hurt)continue;
     if(budget<CFG.reinforceCost){banner('Budget insuffisant',900);break;}
     budget-=CFG.reinforceCost;
-    for(let k=0;k<missing;k++)makeSoldier(s,clamp(s.ax+rand(-2,2),-4.5,4.5),Math.min(LINE_Z-1,s.az+8));
+    if(s.def.pairs){for(const r of['shield','interv']){const n=s.want[r]-s.members.filter(m=>m.role===r).length;for(let k=0;k<n;k++)makeSoldier(s,clamp(s.ax+rand(-2,2),-4.5,4.5),Math.min(LINE_Z-1,s.az+8),r);}}
+    else for(let k=0;k<missing;k++)makeSoldier(s,clamp(s.ax+rand(-2,2),-4.5,4.5),Math.min(LINE_Z-1,s.az+8));
     for(const m of s.members)m.hp=Math.min(m.max,m.hp+m.max*.6);
     banner('Renforts : '+s.name,900);beep(660,.1,'triangle');
   }
@@ -2952,11 +2957,26 @@ function buy(id){
     if(budget<it.cost){banner('Budget insuffisant',900);return false;}
     budget-=it.cost;if(it.kind==='gren'&&!gren[grenSel])grenSel=id;gren[id]+=it.qty;SND.coin();renderShop();return true;
   }
-  const d=id==='sec1'?SQUADS.find(x=>x.name==='SECTION 1'):SQUADS.find(x=>x.type===id);
+  if(it.kind==='agent')return recruit(it,shopSec);
+  const d=SQUADS.find(x=>x.type===id);
   if(squads.some(s=>s.def===d)){banner('Déjà dans la section',900);return false;}
   if(wave<d.from){banner('Disponible après la vague '+d.from,1200);return false;}
   if(budget<d.cost){banner('Budget insuffisant',900);return false;}
-  budget-=d.cost;addSquad(d,true);buildChips();banner((id==='gat'?'GAT':id==='sec1'?'Section 1':'Groupe lacrymo')+' en route',1400);SND.coin();renderShop();return true;
+  budget-=d.cost;addSquad(d,true);buildChips();banner('GAT en route',1400);SND.coin();renderShop();return true;
+}
+// recrutement agent par agent : bouclier ou intervenant, dans la section choisie
+let shopSec='SECTION 3';
+function recruit(it,secName){
+  const def=SQUADS.find(x=>x.name===secName);if(!def)return false;
+  let sq=squads.find(s=>s.def===def);
+  if(sq&&sq.cap>=def.max){banner(def.name+' au complet ('+def.max+' agents)',1100);return false;}
+  if(budget<it.cost){banner('Budget insuffisant',900);return false;}
+  budget-=it.cost;
+  if(!sq){sq=addSquad(def,true);buildChips();}
+  sq.want[it.role]++;sq.cap++;
+  const[lx,lz]=slotLocal(sq,sq.members.length,sq.cap);
+  makeSoldier(sq,clamp(sq.ax+lx,-4.5,4.5),Math.min(LINE_Z+6,sq.az+lz+9),it.role);
+  banner((it.role==='shield'?'Bouclier':'Intervenant')+' → '+def.name.charAt(0)+def.name.slice(1).toLowerCase(),1100);SND.coin();renderShop();return true;
 }
 /* ======================= DISCOURS ======================= */
 let speechTimers=[];
@@ -3412,12 +3432,14 @@ Object.assign(ICON,{agent:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-4 3
 let shopSel=null;
 function shopItems(){
   const L=[];const gatOwn=squads.some(s=>s.type==='gat');
-  for(const it of SHOP.filter(s=>s.kind==='gren'||s.kind==='ammo'))L.push({sec:it.kind==='ammo'?'Munitions · GAT':'Grenades',id:it.id,name:it.name,title:it.short==='Lacrymo'?'Lacrymogène CS':it.short,desc:it.desc,img:GV.icon(it.id),cost:it.cost,
+  for(const it of SHOP.filter(s=>s.kind==='gren'||s.kind==='ammo'))L.push({sec:it.kind==='ammo'?'Munitions · COBRA':'Grenades',id:it.id,name:it.name,title:it.short==='Lacrymo'?'Lacrymogène CS':it.short,desc:it.desc,img:GV.icon(it.id),cost:it.cost,
     st:'Stock '+gren[it.id],lock:it.kind==='ammo'&&!gatOwn,lockTxt:'Nécessite le GAT',cta:'Acheter ×'+it.qty});
   for(const it of SHOP.filter(s=>s.kind==='upg')){if(it.id==='water'&&!squads.some(s=>s.type==='water'))continue;
     const own=it.id==='baton'&&dmgBoost>1;L.push({sec:'Équipement',id:it.id,name:it.name,desc:it.desc,icon:it.id==='baton'?'baton':'drop',cost:it.cost,own,ownTxt:'Équipé',cta:'Acheter'});}
-  for(const it of SHOP.filter(s=>s.kind==='unit')){const d=it.id==='sec1'?SQUADS.find(x=>x.name==='SECTION 1'):SQUADS.find(x=>x.type===it.id),own=squads.some(s=>s.def===d);
-    L.push({sec:'Section',unit:true,id:it.id,name:it.name,desc:it.desc,icon:it.id==='sec1'?'agent':it.id==='gat'?'lbd':'gas',pv:it.id==='sec1'?PREV.sec:PREV.gat,cost:d.cost,own,ownTxt:'Acquis',lock:wave<d.from,lockTxt:'Après vague '+d.from,cta:'Recruter'});}
+  for(const it of SHOP.filter(s=>s.kind==='agent')){const sq=squads.find(s=>s.name===shopSec),n=sq?sq.members.filter(m=>m.role===it.role).length:0,full=sq&&sq.cap>=sq.def.max;
+    L.push({sec:'Recrutement',unit:true,agent:true,id:it.id,name:it.name,desc:it.desc,icon:'agent',pv:PREV.sec,cost:it.cost,st:n+' en '+shopSec.toLowerCase().replace('section','S.'),lock:full,lockTxt:'Section au complet',cta:'Recruter'});}
+  for(const it of SHOP.filter(s=>s.kind==='unit')){const d=SQUADS.find(x=>x.type===it.id),own=squads.some(s=>s.def===d);
+    L.push({sec:'Unités',unit:true,id:it.id,name:it.name,desc:it.desc,icon:it.id==='gat'?'lbd':'gas',pv:PREV.gat,cost:d.cost,own,ownTxt:'Acquis',lock:wave<d.from,lockTxt:'Après vague '+d.from,cta:'Recruter'});}
   return L;
 }
 function renderShop(){
@@ -3435,7 +3457,9 @@ function renderShop(){
   if(x){const dis=x.own||x.lock||budget<x.cost;
     S.innerHTML='<div class="pv">'+(x.pv?'<img src="'+x.pv+'" alt="">':x.img?'<img src="'+x.img+'" alt="" style="max-height:80%">':svg(x.icon))+'</div><h4>'+(x.title||x.name).toUpperCase()+'</h4>'+
       '<div class="row"><span>'+x.sec+'</span><b>'+(x.st||(x.own?x.ownTxt:''))+'</b></div><p>'+x.desc+'</p>'+
+      (x.agent?'<div class="secpick">'+SQUADS.filter(d=>d.type==='shield').map(d=>{const q=squads.find(s=>s.def===d);return '<button data-s="'+d.name+'"'+(d.name===shopSec?' class="on"':'')+'>'+d.name.charAt(0)+d.name.slice(1).toLowerCase()+'<small>'+(q?q.cap:0)+'/'+d.max+(d.trait?' · '+d.trait.split(' · ')[0]:'')+'</small></button>';}).join('')+'</div>':'')+
       '<button class="cta"'+(dis?' disabled':'')+'>'+(x.own?x.ownTxt:x.lock?x.lockTxt:budget<x.cost?'Budget insuffisant':x.cta+' · '+x.cost+' <i class="coin"></i>')+'</button>';
+    S.querySelectorAll('.secpick button').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();shopSec=b.dataset.s;renderShop();}));
     S.querySelector('.cta').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(!dis)buy(x.id);});}
 }
 $('speed').addEventListener('pointerdown',e=>{e.preventDefault();timeScale=timeScale===1?2:1;$('speed').textContent='×'+timeScale;});
@@ -3587,8 +3611,8 @@ function hud(dt){
     const c=chipEls[i];if(!c)return;
     c.d.classList.toggle('sel',s.sel);c.d.classList.toggle('dead',!s.members.length);
     let hp=0;for(const m of s.members)hp+=m.hp;
-    const per=s.members.length?s.members.reduce((t,m)=>t+m.max,0)/s.members.length:1;c.bar.style.width=(100*hp/(per*s.def.n))+'%';
-    c.st.textContent=s.members.length?s.members.length+'/'+s.def.n+' · '+(s.type==='gas'&&s.cd>0?Math.ceil(s.cd)+' s':ORDER_LABEL[s.order]):'Hors de combat';c.lv.textContent=s.lvl?'N'+s.lvl:'';
+    const per=s.members.length?s.members.reduce((t,m)=>t+m.max,0)/s.members.length:1;c.bar.style.width=(100*hp/(per*Math.max(1,s.cap)))+'%';
+    c.st.textContent=s.members.length?s.members.length+'/'+s.cap+' · '+(s.type==='gas'&&s.cd>0?Math.ceil(s.cd)+' s':ORDER_LABEL[s.order]):'Hors de combat';c.lv.textContent=s.lvl?'N'+s.lvl:'';
   });
   const sel=selected()[0],gas=squads.find(s=>s.type==='gat');
   if(!IS_TOUCH)$('help').style.display=phase==='prep'?'block':'none';
