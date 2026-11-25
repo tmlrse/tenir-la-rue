@@ -3731,10 +3731,10 @@ function loop(){
 }
 /* ======================= ROUE DE LA FORTUNE (entre les vagues) ======================= */
 const WHEEL=[
-  {t:'Prime',s:'+90 € de budget',good:1,f:()=>{budget+=90;}},
-  {t:'Coupe budgétaire',l:'Coupe',s:'−60 € de budget',good:0,f:()=>{budget=Math.max(0,budget-60);}},
+  {t:'IJAT',s:'+90 € de budget',good:1,f:()=>{budget+=90;}},
+  {t:'Réforme LOPMI',l:'LOPMI',s:'−60 € de budget',good:0,f:()=>{budget=Math.max(0,budget-60);}},
   {t:'Renfort',s:'Un agent bouclier gratuit',good:1,f:()=>{if(!recruit({role:'shield',cost:0},'SECTION 3')){budget+=70;return 'Section pleine : +70 €';}}},
-  {t:'Foule en colère',l:'Colère',s:'+30 % de manifestants à la prochaine vague',good:0,f:()=>{if(curScen){for(const g of curScen.g){g.n=Math.round(g.n*1.3);g.agit=Math.min(1.1,g.agit+.15);}curScen.threat=Math.min(5,curScen.threat+1);}}},
+  {t:'Gauchos enragés',l:'Gauchos',s:'+30 % de manifestants à la prochaine vague',good:0,f:()=>{if(curScen){for(const g of curScen.g){g.n=Math.round(g.n*1.3);g.agit=Math.min(1.1,g.agit+.15);}curScen.threat=Math.min(5,curScen.threat+1);}}},
   {t:'Grenades',s:'+3 grenades lacrymogènes',good:1,f:()=>{gren.lacry+=3;}},
   {t:'Fatigue',s:'Tes CRS tombent à 60 % de PV',good:0,f:()=>{for(const s of squads)for(const m of s.members)m.hp=Math.min(m.hp,m.max*.6);}},
   {t:'Pluie',s:'Manifestants 20 % plus lents',good:1,f:()=>{waveSpd=.8;}},
@@ -3744,7 +3744,7 @@ const WHEEL=[
   {t:'Licorne',h:'BONUS Licorne',s:'Jojo Fantasy revient de Pondorly pour vous donner un coup de main',good:1,f:()=>{unicornNext=true;}},
 ];
 let wheelRot=0,wheelSpin=null;
-const WICON={'Prime':'💶','Coupe budgétaire':'✂️','Renfort':'🛡️','Foule en colère':'😡','Grenades':'💨','Fatigue':'😴','Pluie':'🌧️','Pénurie':'🚫','Manif du samedi':'📅','Licorne':'🦄','Lendemain de RD':'🍺'};
+const WICON={'IJAT':'💶','Réforme LOPMI':'✂️','Renfort':'🛡️','Gauchos enragés':'😡','Grenades':'💨','Fatigue':'😴','Pluie':'🌧️','Pénurie':'🚫','Manif du samedi':'📅','Licorne':'🦄','Lendemain de RD':'🍺'};
 let wheelBulb=0;
 function drawWheel(){
   const c=$('wheelCv'),x=c.getContext('2d'),W=c.width,C=W/2,Ro=W/2-4,R=Ro-W*.065,n=WHEEL.length,seg=Math.PI*2/n;x.clearRect(0,0,W,W);
