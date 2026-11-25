@@ -398,7 +398,7 @@ const SOLDIER={
   gat:{name:'GAT',hp:85,r:.45,w:2},
   interv:{name:'Intervenant',hp:100,r:.42,w:2,dmg:13,rate:.65,reach:1.5}};
 const SQUADS=[
-  {name:'SECTION 3',type:'shield',n:4,max:8,color:0x4aa3ff,x:0,z:9,fo:[0,4],unlock:0,pairs:true,hpMul:1.35,spdMul:.8,hunt:3.2,trait:'Robuste · lente'},
+  {name:'SECTION 3',type:'shield',n:2,start:{shield:0,interv:2},max:8,color:0x4aa3ff,x:0,z:9,fo:[0,4],unlock:0,pairs:true,hpMul:1.35,spdMul:.8,hunt:3.2,trait:'Robuste · lente'},
   {name:'SECTION 1',type:'shield',n:0,max:8,color:0x4cc38a,x:2.6,z:9,fo:[2.6,4],unlock:-1,pairs:true,hpMul:.8,spdMul:1.25,hunt:9,huntB:true,trait:'Rapide · interpelle les casseurs'},
   {name:'GAT',type:'gat',n:3,color:0xa3e05a,x:-2.6,z:15.2,fo:[-2.6,8],unlock:-1,cost:220,from:2},
   {name:'CANON À EAU',type:'water',n:1,color:0xc77dff,x:0,z:12,fo:[0,10.5],unlock:5}];
@@ -2703,12 +2703,13 @@ const selectAll=()=>squads.forEach(s=>{s.sel=true;});
 function createSquads(){for(const def of SQUADS)if(!def.unlock)addSquad(def);}
 function addSquad(def,arrive){
   {
-    const sq={def,name:def.name,type:def.type,color:def.color,fo:def.fo,members:[],cap:def.n,want:{shield:def.pairs?Math.ceil(def.n/2):0,interv:def.pairs?Math.floor(def.n/2):0},order:'hold',form:'line',lvl:0,ax:def.x,az:def.z,tx:def.x,tz:def.z,cd:2,sel:false,
+    const sq={def,name:def.name,type:def.type,color:def.color,fo:def.fo,members:[],cap:def.n,want:def.start?Object.assign({},def.start):{shield:def.pairs?Math.ceil(def.n/2):0,interv:def.pairs?Math.floor(def.n/2):0},order:'hold',form:'line',lvl:0,ax:def.x,az:def.z,tx:def.x,tz:def.z,cd:2,sel:false,
       ringMat:new THREE.MeshBasicMaterial({color:def.color,transparent:true,opacity:.35,depthWrite:false})};
     sq.flag=new THREE.Mesh(new THREE.ConeGeometry(.35,1.2,8),new THREE.MeshBasicMaterial({color:def.color}));sq.flag.rotation.x=Math.PI;sq.flag.position.y=.6;sq.flag.visible=false;scene.add(sq.flag);
     sq.label=textSprite(def.name,hex(def.color));
     squads.push(sq);
-    for(let i=0;i<def.n;i++){const[lx,lz]=slotLocal(sq,i,def.n);makeSoldier(sq,def.x+lx,def.z+lz+(arrive?9:0));}
+    const roles=def.start?[...Array(def.start.shield).fill('shield'),...Array(def.start.interv).fill('interv')]:[];
+    for(let i=0;i<def.n;i++){const[lx,lz]=slotLocal(sq,i,def.n);makeSoldier(sq,def.x+lx,def.z+lz+(arrive?9:0),roles[i]);}
     return sq;
   }
 }
@@ -2838,7 +2839,7 @@ function startGame(){
 // G(n, x, {b:casseurs, l:meneur, agit, gap:pause avant le groupe (s)})
 function G(n,x,o){return Object.assign({n,x,b:0,l:0,agit:.25,gap:0},o||{});}
 const SCEN=[
-  s=>({n:'Cortège',tip:'Foule calme : place tes sections et observe',g:[G(4,0,{agit:.1}),G(4,-2,{gap:7,agit:.15}),G(5,2,{gap:7,agit:.35})]}),
+  s=>({n:'Cortège',tip:'Foule calme : recrute des boucliers à l\'armurerie pour couvrir tes intervenants',g:[G(4,0,{agit:.1}),G(4,-2,{gap:7,agit:.15}),G(5,2,{gap:7,agit:.35})]}),
   s=>({n:'Premiers casseurs',tip:'Un casseur qui lance un objet est marqué d\'un carré rouge : interpelle-le',g:[G(5,0,{agit:.2}),G(4,-2,{b:1,gap:6,agit:.35}),G(5,2,{b:1,gap:7,agit:.4})]}),
   s=>({n:'Débordement '+(s<0?'à gauche':'à droite'),tip:'Ils vont contourner par '+(s<0?'la gauche':'la droite')+' : renforce ce flanc',g:[G(4,0,{agit:.3}),G(6,3.6*s,{b:1,gap:6,agit:.7}),G(6,3.8*s,{b:1,gap:5,agit:.8})]}),
   s=>({n:'Tenaille',tip:'Attaque sur les deux flancs : répartis tes sections',g:[G(5,-3.6,{agit:.7,b:1}),G(5,3.6,{agit:.7,b:1,gap:1.5}),G(5,-3.8,{agit:.8,b:1,gap:8}),G(5,3.8,{agit:.8,b:1,gap:1.5})]}),
