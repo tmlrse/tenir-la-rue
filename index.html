@@ -2298,7 +2298,7 @@ function dmg(a,amount){
   if(!a||a.dying)return;
   if(a.role==='shield'&&a.squad){if(a.squad.form==='tortue')amount*=.5;else if(a.squad.form==='cercle')amount*=.75;}
   // un intervenant est protégé s'il a un bouclier de sa section juste devant lui, sinon il prend tout
-  if(a.role==='interv'&&a.squad){const cov=a.squad.members.some(s=>s.role==='shield'&&!s.dying&&s.z<a.z+.2&&a.z-s.z<2.2&&Math.abs(s.x-a.x)<1.1);amount*=cov?.45:1.5;}
+  if(a.role==='interv'&&a.squad){const cov=a.squad.members.some(s=>s.role==='shield'&&!s.dying&&s.z<a.z+.35&&a.z-s.z<2.2&&Math.abs(s.x-a.x)<1.15);amount*=cov?.45:1.5;}
   a.hp-=amount;a.hit=.12;if(a.side==='e')a.lastHitT=gT;
   if(a===cmd){shake=Math.max(shake,.25);vibe(40);const h=$('hurt');h.style.opacity=.9;setTimeout(()=>{h.style.opacity=0;},140);}
   if(a.hp<=0)kill(a);
@@ -2329,23 +2329,21 @@ function nearestEnemy(x,z,maxD){
   return best;
 }
 const enemiesList=()=>agents.filter(a=>a.side==='e'&&!a.dying);
-// formation à deux rangs : boucliers devant, intervenants juste derrière (centrés, quitte à se décaler)
+// formation : boucliers et intervenants dans la même figure, intercalés (chaque intervenant colle à un bouclier)
 // les places sont attribuées de gauche à droite selon la position actuelle, pour éviter qu'ils se croisent
 function formSlots(sq){
   const sh=sq.members.filter(x=>x.role==='shield'&&!x.dying),iv=sq.members.filter(x=>x.role==='interv'&&!x.dying);
   const key=sq.form+'|'+sh.map(x=>x.nid).join(',')+'|'+iv.map(x=>x.nid).join(',');
   if(sq._fk===key)return;sq._fk=key;
-  const front=sh.length?sh:iv,back=sh.length?iv:[],ns=front.length,nb=back.length,f=sq.form;
-  const ring=(n,r)=>Array.from({length:n},(_,i)=>{const a=i/n*Math.PI*2;return[Math.sin(a)*r,-Math.cos(a)*r];});
-  let F,B;
-  if(f==='cercle'){F=ring(ns,Math.max(1.1,ns*.3));B=nb===1?[[0,0]]:ring(nb,.55);}
-  else if(f==='column'){F=front.map((_,i)=>[((i%2)-.5)*.9,Math.floor(i/2)]);const r0=Math.ceil(ns/2);B=back.map((_,i)=>[((i%2)-.5)*.9,r0+Math.floor(i/2)]);}
-  else{const flat=f==='line'||f==='tortue',sp=f==='tortue'?.62:f==='line'?.88:.9,dz=f==='tortue'?.62:.95;
-    F=front.map((_,i)=>[(i-(ns-1)/2)*sp,flat?0:Math.abs(i-(ns-1)/2)*.8]);
-    const fzAt=x=>{if(!F.length)return 0;if(x<=F[0][0])return F[0][1];for(let i=1;i<F.length;i++)if(x<=F[i][0]){const u=(x-F[i-1][0])/(F[i][0]-F[i-1][0]||1);return F[i-1][1]+(F[i][1]-F[i-1][1])*u;}return F[F.length-1][1];};
-    B=back.map((_,i)=>{const x=(i-(nb-1)/2)*sp;return[x,fzAt(x)+dz];});}
-  const assign=(arr,pos)=>{const A=[...arr].sort((p,q)=>p.x-q.x),Pp=[...pos].sort((p,q)=>p[0]-q[0]||p[1]-q[1]);A.forEach((m,i)=>m.slot=Pp[i]);};
-  assign(front,F);assign(back,B);
+  const n=sh.length+iv.length,ni=iv.length;if(!n)return;
+  const P=Array.from({length:n},(_,i)=>slotLocal({type:'shield',form:sq.form},i,n));
+  if(sq.form==='cercle'){const r=Math.max(1.1,n*.24);P.forEach((p,i)=>{const a=i/n*Math.PI*2;p[0]=Math.sin(a)*r;p[1]=-Math.cos(a)*r;});}
+  // places des intervenants réparties régulièrement : B I B I B… (ou I B I… s'ils sont plus nombreux)
+  const isI=new Array(n).fill(false);for(let j=0;j<ni;j++)isI[Math.min(n-1,Math.round((j+.5)*n/ni-.5))]=true;
+  let c=isI.filter(Boolean).length;for(let i=0;c<ni&&i<n;i++)if(!isI[i]){isI[i]=true;c++;}
+  const PS=P.filter((_,i)=>!isI[i]),PI=P.filter((_,i)=>isI[i]);
+  const assign=(arr,pos)=>{const A=[...arr].sort((p,q)=>p.x-q.x||p.z-q.z),Pp=[...pos].sort((p,q)=>p[0]-q[0]||p[1]-q[1]);A.forEach((m,i)=>m.slot=Pp[i]);};
+  assign(sh,PS);assign(iv,PI);
 }
 function pairSlot(sq,m){formSlots(sq);return m.slot||[0,0];}
 // recul de la foule après un coup : les moins déterminés reculent, la cible est repoussée
