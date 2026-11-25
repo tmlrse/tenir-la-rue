@@ -3278,7 +3278,7 @@ function introCam(dt){
 /* ======================= ENTRÉES ======================= */
 const ray=new THREE.Raycaster(),mouseV=new THREE.Vector2(),plane=new THREE.Plane(new THREE.Vector3(0,1,0),0),hitV=new THREE.Vector3();
 function groundPoint(x,y){
-  mouseV.set(x/innerWidth*2-1,-(y/innerHeight)*2+1);ray.setFromCamera(mouseV,camera);
+  const r=cv.getBoundingClientRect();mouseV.set((x-r.left)/r.width*2-1,-((y-r.top)/r.height)*2+1);ray.setFromCamera(mouseV,camera);
   if(!ray.ray.intersectPlane(plane,hitV))return false;
   cur.x=clamp(hitV.x,-STREET_X,STREET_X);cur.z=clamp(hitV.z,-50,LINE_Z);return true;
 }
@@ -3287,9 +3287,10 @@ function tap(x,y,btn){
   if(introT>0)return;
   if(!groundPoint(x,y))return;
   if(btn!==2){
-    let best=null,bd=1.6;
+    let best=null,bd=1.0;
     for(const a of agents){if(a.side!=='f'||a===cmd||a.dying)continue;const d=Math.hypot(a.x-cur.x,a.z-cur.z);if(d<bd){bd=d;best=a;}}
-    if(best){selectOnly(squads.indexOf(best.squad));beep(600,.04);return;}
+    const sel=selected();
+    if(best&&!(sel.length===1&&sel[0]===best.squad)){selectOnly(squads.indexOf(best.squad));beep(600,.04);return;}
   }
   orderMove(cur.x,cur.z);
 }
@@ -3306,7 +3307,7 @@ cv.addEventListener('pointerdown',e=>{
 cv.addEventListener('pointermove',e=>{
   const p=ptrs.get(e.pointerId);if(!p)return;
   const dx=e.clientX-p.x;p.x=e.clientX;p.y=e.clientY;
-  if(Math.hypot(e.clientX-p.sx,e.clientY-p.sy)>9)p.moved=true;
+  if(Math.hypot(e.clientX-p.sx,e.clientY-p.sy)>16)p.moved=true;
   if(ptrs.size>=2){const d=pinchDist();if(pinchD>0&&d>0)camZoom=clamp(camZoom*(pinchD/d),.3,1.8);pinchD=d;}
   else if(p.aim&&aim){if(groundPoint(e.clientX,e.clientY))aimAt(cur.x,cur.z);}
   else if(p.moved&&(p.type==='touch'||p.btn===0))camYaw-=dx*.0065;
@@ -3314,7 +3315,7 @@ cv.addEventListener('pointermove',e=>{
 function endPtr(e){
   const p=ptrs.get(e.pointerId);if(!p)return;ptrs.delete(e.pointerId);if(ptrs.size<2)pinchD=0;
   if(p.aim&&aim){if(e.type==='pointerup'&&!p.multi)aimFire();return;}
-  if(e.type==='pointerup'&&!p.moved&&!p.multi&&Date.now()-p.t<450)tap(e.clientX,e.clientY,p.btn);
+  if(e.type==='pointerup'&&!p.moved&&!p.multi&&Date.now()-p.t<650)tap(e.clientX,e.clientY,p.btn);
 }
 cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endPtr);
 cv.addEventListener('pointermove',e=>{if(aim&&e.pointerType==='mouse'&&!ptrs.has(e.pointerId)&&groundPoint(e.clientX,e.clientY))aimAt(cur.x,cur.z);});
@@ -3336,11 +3337,13 @@ function joyMove(e){
 }
 jz.addEventListener('pointerdown',e=>{
   if(joy.id!==null)return;e.preventDefault();joy.id=e.pointerId;try{jz.setPointerCapture(e.pointerId);}catch(_){}
-  joy.ox=e.clientX;joy.oy=e.clientY;jb.style.left=e.clientX+'px';jb.style.top=e.clientY+'px';jb.classList.add('on');joyMove(e);
+  joy.ox=e.clientX;joy.oy=e.clientY;joy.t0=Date.now();joy.far=false;jb.style.left=e.clientX+'px';jb.style.top=e.clientY+'px';jb.classList.add('on');joyMove(e);
 });
-jz.addEventListener('pointermove',e=>{if(e.pointerId===joy.id)joyMove(e);});
+jz.addEventListener('pointermove',e=>{if(e.pointerId===joy.id){if(Math.hypot(e.clientX-joy.ox,e.clientY-joy.oy)>16)joy.far=true;joyMove(e);}});
 function joyEnd(e){
   if(e.pointerId!==joy.id)return;joy.id=null;joy.x=0;joy.y=0;
+  // un simple tap dans la zone du joystick = un tap sur la rue (ordre de déplacement / visée)
+  if(e.type==='pointerup'&&!joy.far&&Date.now()-joy.t0<650){if(aim){if(groundPoint(e.clientX,e.clientY)){aimAt(cur.x,cur.z);aimFire();}}else tap(e.clientX,e.clientY,0);}
   jk.style.transform='translate(-50%,-50%)';jb.classList.remove('on');jb.style.left='';jb.style.top='';
 }
 jz.addEventListener('pointerup',joyEnd);jz.addEventListener('pointercancel',joyEnd);
