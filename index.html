@@ -346,6 +346,16 @@ body.m3d #intel{display:none!important}
 #bossBar .t{width:min(26vw,200px);height:8px;border-radius:9px;background:rgba(255,255,255,.12);overflow:hidden}#bossBar .f{height:100%;background:linear-gradient(90deg,#ff3b30,#ff8a5a);border-radius:9px;transition:width .2s}
 body.m3d #bossBar{display:none!important}
 #intel .bs{font:600 11px/1.3 Inter,system-ui,sans-serif;color:#ff8a7a}
+#edTog{position:fixed;left:calc(10px + var(--sal,0px));bottom:calc(10px + var(--sab,0px));z-index:30;padding:9px 13px;border-radius:999px;border:1px solid rgba(245,197,30,.5);background:rgba(13,19,33,.9);color:#f5c51e;font:800 14px Inter,system-ui,sans-serif}
+#edPanel{position:fixed;left:calc(10px + var(--sal,0px));bottom:calc(54px + var(--sab,0px));z-index:31;display:none;flex-direction:column;gap:8px;padding:10px 12px;border-radius:16px;background:rgba(13,19,33,.95);border:1px solid rgba(245,197,30,.35);color:#fff;max-height:calc(100% - 80px);overflow:auto;width:min(330px,60vw);font:600 11px Inter,system-ui,sans-serif}
+#edPanel .eh{display:flex;justify-content:space-between;align-items:center;color:#f5c51e;font:800 11px Inter,system-ui,sans-serif;letter-spacing:.14em}
+#edPanel .es>b{display:block;margin-bottom:4px;color:#8f9ab2;font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+#edPanel .er{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+#edPanel button{padding:6px 9px;border-radius:9px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:#fff;font:700 11px Inter,system-ui,sans-serif}
+#edPanel button.on{background:#f5c51e;color:#0d1321;border-color:#f5c51e}
+#edPanel input,#edPanel select{padding:6px 8px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font:700 11px Inter,system-ui,sans-serif;width:64px}
+#edPanel select{width:auto;max-width:170px}#edPanel select option{color:#000}
+body.m3d #edTog,body.m3d #edPanel{display:none!important}
 </style>
 </head>
 <body>
@@ -2424,6 +2434,7 @@ function slotLocal(sq,i,n){
 }
 function dmg(a,amount){
   if(!a||a.dying)return;
+  if(EDIT.god&&a.side==='f')return;
   if(a.role==='shield'&&a.squad){if(a.squad.form==='tortue')amount*=.5;else if(a.squad.form==='cercle')amount*=.75;}
   // un intervenant est protégé s'il a un bouclier de sa section juste devant lui, sinon il prend tout
   if(a.role==='interv'&&a.squad){const cov=a.squad.members.some(s=>s.role==='shield'&&!s.dying&&s.z<a.z+.35&&a.z-s.z<2.2&&Math.abs(s.x-a.x)<1.15);amount*=cov?.45:1.5;}
@@ -3902,8 +3913,9 @@ function startScreen(){
   $('box').innerHTML='<div class="kick">Maintien de l\'ordre</div><h1>Tenir la rue</h1><p id="rec">'+(r.wave?'Record : vague <b>'+r.wave+'</b> · <b>'+r.score+'</b> pts':'Tenez la rue le plus longtemps possible')+'</p>'+
     '<div class="modes"><button class="mode sel" id="mSolo"><b>Solo</b><span>Survie · vagues sans fin</span></button>'+
     '<button class="mode" id="mCoop"><b>Coop à 2</b><span>En ligne · rue deux fois plus large</span></button></div>'+
-    '<button id="go">Jouer</button>';
-  $('go').onclick=()=>{if(IS_TOUCH)goFS();startGame();fsChanged();};
+    '<button id="go">Jouer</button><button id="mEd" class="ghostBtn">Mode éditeur</button>';
+  $('go').onclick=()=>{EDIT.on=false;const ep=$('edPanel'),et=$('edTog');if(ep)ep.style.display='none';if(et)et.remove(),ep&&ep.remove();EDIT.speed=1;EDIT.god=false;if(IS_TOUCH)goFS();startGame();fsChanged();};
+  $('mEd').onclick=()=>edOpen();
   $('mCoop').onclick=()=>coopMenu();
   $('overlay').style.display='flex';
 }
@@ -4021,7 +4033,7 @@ function fitView(){const W=Math.round(window.visualViewport?visualViewport.width
 function loop(){
   requestAnimationFrame(loop);fitView();   // suit la rotation de l'écran même quand Safari donne une taille en retard
   const dt=Math.min(clock.getDelta(),.05);
-  if(live()&&!paused){for(let i=0;i<timeScale;i++)update(dt*GAME_SPEED);}
+  if(live()&&!paused){const sp=GAME_SPEED*(EDIT.on?EDIT.speed:1),n=Math.max(1,Math.ceil(sp/1.5));for(let i=0;i<timeScale;i++)for(let k=0;k<n;k++)update(dt*sp/n);}
   ambientFx(dt);updateAim();SND.ambient(dt,MS&&MS.on&&!live()?.9:phase==='wave'?.3+tension/100*.7:phase==='prep'?.12:0,MS&&MS.on);updateHeli(paused?0:dt);if(!paused)updateRain(dt);if(!live()||paused)updateParticles(paused?0:dt);
   if(MS&&MS.on&&!live())menuUpdate(dt);else if(cmd&&live())updateCamera(dt);else if(phase==='menu'||phase==='over'||phase==='win'){camYaw+=dt*.08;camera.position.set(Math.sin(camYaw)*30,12,Math.cos(camYaw)*10+16);camera.lookAt(0,2,0);sky.position.copy(camera.position);}
   if(phase!=='menu')hud(dt);
@@ -4371,6 +4383,42 @@ if(COOP){
   setTimeout(()=>{if(jc.length===4)guestStart(jc);else hostStart();},0);
 }
 window.__net={openShop:()=>openShop(),closeShop:()=>closeShop(),get shopOpen(){return shopOpen;},get paused(){return paused;},kill:a=>kill(a),buy:id=>buy(id),launch:()=>launchWave(),move:(x,z)=>orderMove(x,z),NET,PUP,get cmd2(){return cmd2;},get cmd(){return cmd;},hostRpc,get phase(){return phase;},squads,agents};
+
+/* ======================= MODE ÉDITEUR (tests) ======================= */
+// Menu d'accueil → « Mode éditeur » : partie solo avec un panneau de triche pour tester (vitesse, argent, vagues, boss, roue…)
+const EDIT={on:false,speed:1,god:false};
+function edOpen(){EDIT.on=true;if(IS_TOUCH)goFS();startGame();fsChanged();edBuild();}
+function edBuild(){
+  let p=$('edPanel');if(p){p.style.display='flex';return;}
+  const tg=document.createElement('button');tg.id='edTog';tg.className='glass';tg.textContent='🛠';document.body.appendChild(tg);
+  p=document.createElement('div');p.id='edPanel';p.className='glass';document.body.appendChild(p);
+  const sec=(t,html)=>'<div class="es"><b>'+t+'</b><div class="er">'+html+'</div></div>',B=(id,t)=>'<button data-a="'+id+'">'+t+'</button>';
+  p.innerHTML='<div class="eh"><span>MODE ÉDITEUR</span>'+B('close','✕')+'</div>'+
+    sec('Vitesse','<span id="edSp" class="er">'+[.5,1,2,4,8].map(v=>'<button data-sp="'+v+'"'+(v===1?' class="on"':'')+'>×'+v+'</button>').join('')+'</span>')+
+    sec('Ressources',B('money','+1000 €')+B('gren','+10 grenades')+B('heal','Soigner tout')+B('ten','Tension 0'))+
+    sec('Troupes',B('sh','+1 bouclier')+B('iv','+1 intervenant')+B('god','Invincible : non')+B('uni','Licorne'))+
+    sec('Vagues',B('next','Lancer la vague')+B('win','Gagner la vague')+B('boss','Boss maintenant')+'<span class="er"><input id="edW" type="number" min="1" max="99" value="5">'+B('goto','Aller à la vague')+'</span>')+
+    sec('Roue','<select id="edWh">'+WHEEL.map((w,i)=>'<option value="'+i+'">'+(w.h||w.t)+'</option>').join('')+'<option value="-1">Au hasard</option></select>'+B('wheel','Tourner'));
+  const act={
+    close:()=>{p.style.display='none';},
+    money:()=>{budget+=1000;},gren:()=>{gren.lacry+=10;gren.gmd+=10;gren.gm2l+=10;},
+    heal:()=>{for(const a of agents)if(a.side==='f'&&!a.dying)a.hp=a.max;},ten:()=>{tension=0;},
+    sh:()=>recruit({role:'shield',cost:0},'SECTION 3'),iv:()=>recruit({role:'interv',cost:0},'SECTION 3'),
+    god:b=>{EDIT.god=!EDIT.god;b.textContent='Invincible : '+(EDIT.god?'oui':'non');b.classList.toggle('on',EDIT.god);},
+    uni:()=>{if(phase==='wave'&&!unicorn)spawnUnicorn();else banner('Licorne : pendant une vague',1000);},
+    next:()=>{if(phase==='prep'){if(wheelOpen)closeWheel();if(shopOpen)closeShop();launchWave();}},
+    win:()=>{if(phase!=='wave')return;queue.length=0;bossState=1;for(const a of agents)if(a.side==='e'&&!a.dying){scene.remove(a.g);a.dying=.0001;}},
+    boss:()=>{if(phase==='wave'&&bossState===0){queue.length=0;spawnBoss();}else banner('Boss : pendant une vague, une fois par vague',1200);},
+    goto:()=>{if(phase!=='prep'){banner('Entre deux vagues seulement',1000);return;}const n=Math.max(1,Math.min(99,+$('edW').value||1));wave=n-1;curScen=planWave(n);const it=$('intel');if(it)it.dataset.w='';banner('Prochaine vague : '+n,1000);},
+    wheel:()=>{const i=+$('edWh').value;if(phase!=='prep'){banner('La roue : entre deux vagues',1000);return;}if(!wheelOpen)openWheel();setTimeout(()=>spinWheel(i>=0?i:null),300);},
+  };
+  p.addEventListener('pointerdown',e=>{const b=e.target.closest('button');if(!b)return;e.preventDefault();e.stopPropagation();
+    if(b.dataset.sp){EDIT.speed=+b.dataset.sp;p.querySelectorAll('[data-sp]').forEach(x=>x.classList.toggle('on',x===b));$('edTog').textContent='🛠 ×'+EDIT.speed;return;}
+    const f=act[b.dataset.a];if(f)f(b);});
+  p.addEventListener('pointerup',e=>e.stopPropagation());
+  tg.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();p.style.display=p.style.display==='flex'?'none':'flex';});
+  p.style.display='flex';
+}
 
 loop();
 })();
