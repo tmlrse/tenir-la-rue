@@ -419,7 +419,7 @@ const PRO4_DATA={"nv":4536,"pos":"rNuDviNiMz/SPbW7cot5voB1ND+NN7W7XkOBvnQlND+ksh
 /* ======================= RÉGLAGES ======================= */
 const IS_TOUCH=('ontouchstart' in window)||(typeof navigator!=='undefined'&&navigator.maxTouchPoints>0);
 const LOW=IS_TOUCH||Math.min(innerWidth,innerHeight)<640;
-const CFG={startBudget:320,startLives:10,income:.6,maxWave:Infinity,hpGrowth:.2,firstPrep:30,prep:18,
+const CFG={startBudget:320,startLives:3,income:.6,maxWave:Infinity,hpGrowth:.2,firstPrep:30,prep:18,
   reinforceCost:30,upgradeBase:70,upgradeMax:3,
   commanderHp:240,gatRange:26,commanderSpeed:3.6,strikeDmg:18,strikeCd:.34,strikeReach:2.4};
 // coop à 2 : ?coop=host (crée la partie) ou ?join=CODE (rejoint) — la rue est deux fois plus large
@@ -430,6 +430,8 @@ const GAME_SPEED=1.15;
 const NET={host:false,guest:false,ok:false,q:[],pq:[],ev(o){if(this.host&&this.ok)this.q.push(o);}};
 let cmd2=null;
 const STREET_X=5.2*SW,LINE_Z=18,SPAWN_Z=-56;
+// les CRS ne s'avancent pas à plus de quelques mètres devant la ligne
+const FRONT_Z=LINE_Z-5;
 const SOLDIER={
   shield:{name:'Boucliers',hp:130,r:.42,w:3,dmg:10,rate:.8,reach:1.45},
   gas:{name:'Lacrymo',hp:70,r:.45,w:2},
@@ -444,8 +446,8 @@ const SQUADS=[
 if(SW>1)for(const d of SQUADS){d.x*=SW;if(d.fo)d.fo=[d.fo[0]*SW,d.fo[1]];}
 const ENEMY={
   p:{hp:45,speed:1.8,dmg:6,rate:1.0,leak:1,reward:5,r:.45,w:1,aggro:4.5},
-  b:{hp:80,speed:3.0,dmg:9,rate:1.0,leak:2,reward:8,r:.45,w:1,aggro:9,ranged:true},
-  l:{hp:520,speed:1.5,dmg:15,rate:1.2,leak:5,reward:65,r:.7,w:3,aggro:6}};
+  b:{hp:80,speed:3.0,dmg:9,rate:1.0,leak:1,reward:8,r:.45,w:1,aggro:9,ranged:true},
+  l:{hp:520,speed:1.5,dmg:15,rate:1.2,leak:1,reward:65,r:.7,w:3,aggro:6}};
 const SHOP=[
   {id:'lacry',kind:'gren',name:'Grenade lacrymogène CS',short:'Lacrymo',desc:'Fumigène : reste au sol et libère un nuage irritant qui ralentit et blesse.',qty:3,cost:30},
   {id:'gmd',kind:'gren',name:'GENL · désencerclement',short:'GENL',desc:'Projection de 18 plots en caoutchouc : blesse et repousse autour de l\'impact.',qty:2,cost:45},
@@ -2461,7 +2463,9 @@ function kill(a){
 /* ======================= IA ======================= */
 function stepToward(a,x,z,speed,dt){
   const dx=x-a.x,dz=z-a.z,d=Math.hypot(dx,dz);if(d<.04)return d;
-  if(a.side==='f'&&a!==unicorn)speed*=crsSpd;const s=Math.min(d,speed*dt);a.x+=dx/d*s;a.z+=dz/d*s;a.walk+=s;a.moving=true;return d;
+  if(a.side==='f'&&a!==unicorn)speed*=crsSpd;const s=Math.min(d,speed*dt);a.x+=dx/d*s;a.z+=dz/d*s;
+  if(a.side==='f'&&a!==unicorn&&a.z<FRONT_Z)a.z=FRONT_Z;
+  a.walk+=s;a.moving=true;return d;
 }
 const faceTo=(a,x,z)=>{a.faceT=Math.atan2(x-a.x,z-a.z);};
 function nearestEnemy(x,z,maxD){
@@ -2616,7 +2620,7 @@ function updateCommander(c,dt){
     let dx=f[0]*fw+r[0]*st,dz=f[1]*fw+r[1]*st;const l=Math.hypot(dx,dz);dx/=l;dz/=l;
     const s=CFG.commanderSpeed*crsSpd*mag*dt;c.x+=dx*s;c.z+=dz*s;c.walk+=s;c.moving=true;c.faceT=Math.atan2(dx,dz);
   }
-  c.x=clamp(c.x,-STREET_X,STREET_X);c.z=clamp(c.z,-50,LINE_Z-.8);
+  c.x=clamp(c.x,-STREET_X,STREET_X);c.z=clamp(c.z,FRONT_Z,LINE_Z-.8);
   c.cd-=dt;c.gcd=Math.max(0,(c.gcd||0)-dt);
   if(!nearestEnemy(c.x,c.z,4.5))c.hp=Math.min(c.max,c.hp+3*dt);
   if((keys.Space||strikeHeld)&&c.cd<=0)cmdStrike(c);
@@ -2741,7 +2745,7 @@ function updateEnemy(e,dt,leaders,friends){
     }else{e.anim='walk';e.faceT=0;stepToward(e,e.x,e.z+1.5,spd,dt);}
   }
   if(e.rig.flare){e.fl-=dt;if(e.fl<=0&&parts.length<PMAX*.7){e.fl=.1;P(e.x+.45,2.2,e.z,{c:0xe02818,vy:1.1,vx:rand(-.3,.3),life:1.8,s0:.8,s1:3.2,a:.4,spin:.3});P(e.x+.45,2.0,e.z,{c:0xff4030,add:true,life:.12,s0:.7,s1:.4,a:.8});}}
-  if(e.z>LINE_Z){lives-=e.leak;tension=Math.min(100,tension+8);banner('La ligne est percée ! −'+e.leak,1100);SND.alarm();vibe(80);e.dying=.01;e.bar.bar.visible=false;}
+  if(e.z>LINE_Z){lives-=e.leak;tension=Math.min(100,tension+8);banner('La ligne est percée ! Plus que '+Math.max(0,lives)+' chance'+(lives>1?'s':''),1400);SND.alarm();vibe(80);e.dying=.01;e.bar.bar.visible=false;}
 }
 
 /* ======================= PROJECTILES / EFFETS ======================= */
@@ -3048,6 +3052,7 @@ function updateSquads(dt){
       tx=clamp(tx,-STREET_X+.6,STREET_X-.6);tz=Math.min(tz,LINE_Z-2);
       const d=Math.hypot(tx-sq.ax,tz-sq.az),s=Math.min(d,spd*dt);
       if(d>.01){sq.ax+=(tx-sq.ax)/d*s;sq.az+=(tz-sq.az)/d*s;}
+      if(sq.az<FRONT_Z+1)sq.az=FRONT_Z+1;
       if(d<.15&&(sq.order==='move'||sq.order==='charge'))sq.order='hold';
     }
     if(sq.type==='water'&&sq.cd<=0){const t=nearestEnemy(sq.ax,sq.az,14);if(t&&t.z<sq.az-1)fireWater(sq,t);}
@@ -3074,7 +3079,7 @@ function groupTargets(list,x,z){
 }
 function orderMove(x,z){
   const list=selected().filter(s=>s.members.length);if(!list.length)return;
-  const t=groupTargets(list,x,z);list.forEach((s,i)=>{s.order='move';s.tx=t[i][0];s.tz=t[i][1];});
+  const t=groupTargets(list,x,z);list.forEach((s,i)=>{s.order='move';s.tx=t[i][0];s.tz=Math.max(FRONT_Z+1,t[i][1]);});
   pingRing(clamp(x,-STREET_X,STREET_X),Math.min(z,LINE_Z),0xffd166);beep(500,.06);
 }
 function orderCharge(){
@@ -3590,7 +3595,7 @@ const bossOf=w=>BOSSES[(w-1)%BOSSES.length];
 function spawnBoss(){
   const B=BOSSES.find(b=>b.id===(THEMES[THEME]||THEMES[0]).boss)||bossOf(wave),k=wave<=3?[.3,.5,.7][wave-1]:.7+.3*(wave-3),mul=COOP?1.5:1;
   const a=newAgent({side:'e',kind:'b',sc:B.sc,bk:'boss',wpn:B.id,build:()=>buildBoss(B.id),x:rand(-2,2)*SW,z:SPAWN_Z+6,hp:B.hp*k*mul,r:.55*B.sc,w:2,
-    speed:B.spd*waveSpd,dmg:ENEMY.b.dmg*(wave<=2?1.2:2.2),rate:ENEMY.b.rate*.8,leak:3,reward:90,ranged:B.id!=='brute',aggro:1,barY:2.6*B.sc,barW:1.8});
+    speed:B.spd*waveSpd,dmg:ENEMY.b.dmg*(wave<=2?1.2:2.2),rate:ENEMY.b.rate*.8,leak:1,reward:90,ranged:B.id!=='brute',aggro:1,barY:2.6*B.sc,barW:1.8});
   a.spec.bs=B.id;a.boss=B;a.gasImmune=B.id==='ninja';a.bt=rand(2,4);a.agit=1.1;a.mort=99;a.grp=-1;mark(a);boss=a;
   // halo coloré sous le boss
   const ring=new THREE.Mesh(new THREE.RingGeometry(.9,1.25,28),new THREE.MeshBasicMaterial({color:0xff3b30,transparent:true,opacity:.75,depthWrite:false}));ring.rotation.x=-Math.PI/2;ring.position.y=.05;a.g.add(ring);
@@ -3615,7 +3620,7 @@ function bossTick(e,dt,friends){
     if(Math.random()<dt*3)P(e.x,2.9*B.sc*.8,e.z,{c:0xffd166,add:true,vy:.8,life:.4,s0:.4,s1:1.2,a:.6});
   }else if(B.id==='ninja'){
     let nf=null,nd=4;for(const f of friends){const d=Math.hypot(f.x-e.x,f.z-e.z);if(d<nd){nd=d;nf=f;}}
-    if(nf&&!(e.dodge>gT)){e.dodge=gT+2.2;const s=e.x>nf.x?1:-1;e.x=clamp(e.x+s*2.4,-STREET_X+.4,STREET_X-.4);e.z-=1.6;for(let k=0;k<8;k++)P(e.x,1,e.z,{c:0x333333,vx:rand(-1,1),vy:rand(.2,1),life:.4,s0:.6,s1:1.4,a:.4});}
+    if(nf&&!(e.dodge>gT)){e.dodge=gT+2.2;const s=e.x>nf.x?1:-1;e.x=clamp(e.x+s*2.4,-STREET_X+.4,STREET_X-.4);e.z-=.6;for(let k=0;k<8;k++)P(e.x,1,e.z,{c:0x333333,vx:rand(-1,1),vy:rand(.2,1),life:.4,s0:.6,s1:1.4,a:.4});}
     if(e.bt<=0){let best=null,bd=16;for(const f of friends){const d=Math.hypot(f.x-e.x,f.z-e.z);if(d>4&&d<bd){bd=d;best=f;}}
       if(best){e.bt=2.4;e.lastAtk=gT;throwObj(e,best,Math.random()<.5?'pave':'brick',9);}else e.bt=.5;}
   }
@@ -3625,10 +3630,12 @@ function bossMove(e,dt,friends){
   const B=e.boss;let t=null,bd=1e9;for(const f of friends){if(f.kind==='unicorn')continue;const d=Math.hypot(f.x-e.x,f.z-e.z);if(d<bd){bd=d;t=f;}}
   e.cd-=dt;
   if(!t){e.anim='walk';e.moving=false;return;}
-  const keep=B.id==='brute'?0:(B.id==='tribun'?9:B.id==='pyro'?8:7)*(wave<=2?.6:1);
   faceTo(e,t.x,t.z);
-  if(B.id==='brute'||(bd>keep+1.5&&LINE_Z-e.z>keep)){e.anim=bd>6?'run':'walk';if(bd>(B.id==='brute'?D_REACH:keep))stepToward(e,t.x,t.z,e.speed*(e.slow>0?.6:1),dt);}
-  else if(bd<keep-1.5&&wave>2){e.anim='walk';stepToward(e,e.x+(e.x-t.x),e.z-(t.z-e.z>0?3:-3),e.speed*.7,dt);}
+  // les CRS ne dépassent pas FRONT_Z : les boss à distance viennent se poster juste devant, à portée des intervenants
+  const hz=FRONT_Z-1.1;
+  if(B.id==='brute'){e.anim=bd>6?'run':'walk';if(bd>D_REACH)stepToward(e,t.x,t.z,e.speed*(e.slow>0?.6:1),dt);}
+  else if(e.z<hz-.3){e.anim=hz-e.z>6?'run':'walk';stepToward(e,clamp(t.x,-STREET_X+.5,STREET_X-.5),hz,e.speed*(e.slow>0?.6:1),dt);}
+  else if(wave>2&&bd<1.6){e.anim='walk';stepToward(e,e.x+(e.x>t.x?1.5:-1.5),e.z,e.speed*.6,dt);}
   else{e.moving=false;e.anim='idle';}
   e.z=clamp(e.z,SPAWN_Z+4,LINE_Z-1.2);e.x=clamp(e.x,-STREET_X+.4,STREET_X-.4);
   if(bd<D_REACH+.3&&e.cd<=0){e.cd=e.rate;e.swing=.3;e.lastAtk=gT;dmg(t,e.dmg);SND.punch&&SND.punch(t.x,t.z);}
@@ -4196,7 +4203,7 @@ function makeCmd2(){
 function updateCmd2(c,dt){
   const r=netRin;c.cd-=dt;c.gcd=Math.max(0,(c.gcd||0)-dt);
   if(!r)return;
-  const ox=c.x,oz=c.z;c.x=clamp(r.x,-STREET_X,STREET_X);c.z=clamp(r.z,-50,LINE_Z-.8);const d=Math.hypot(c.x-ox,c.z-oz);
+  const ox=c.x,oz=c.z;c.x=clamp(r.x,-STREET_X,STREET_X);c.z=clamp(r.z,FRONT_Z,LINE_Z-.8);const d=Math.hypot(c.x-ox,c.z-oz);
   if(d>.002){c.walk+=d;c.moving=true;}c.faceT=r.f;
   if(!nearestEnemy(c.x,c.z,4.5))c.hp=Math.min(c.max,c.hp+3*dt);
   if(r.k&&c.cd<=0&&introT<=0){const c0=cmd;cmd=c;try{cmdStrike(c);}finally{cmd=c0;}}
@@ -4390,7 +4397,7 @@ function guestCmd(dt){
     let fw=(keys.KeyW?1:0)-(keys.KeyS?1:0)-joy.y,st=(keys.KeyD?1:0)-(keys.KeyA?1:0)+joy.x;const mag=Math.min(1,Math.hypot(fw,st));
     if(mag>.02){let dx=f[0]*fw+r[0]*st,dz=f[1]*fw+r[1]*st;const l=Math.hypot(dx,dz);dx/=l;dz/=l;
       const s=CFG.commanderSpeed*crsSpd*mag*dt;c.x+=dx*s;c.z+=dz*s;c.walk+=s;c.moving=true;c.faceT=Math.atan2(dx,dz);}
-    c.x=clamp(c.x,-STREET_X,STREET_X);c.z=clamp(c.z,-50,LINE_Z-.8);
+    c.x=clamp(c.x,-STREET_X,STREET_X);c.z=clamp(c.z,FRONT_Z,LINE_Z-.8);
     if((keys.Space||strikeHeld)&&(c.lcd=(c.lcd||0)-dt)<=0){c.lcd=CFG.strikeCd;c.swing=.3;}
   }
   netInT-=dt;if(netInT<=0&&NET.send){netInT=.05;NET.send({t:'in',x:r2(c.x),z:r2(c.z),f:r2(c.faceT),k:!!(keys.Space||strikeHeld)});}
