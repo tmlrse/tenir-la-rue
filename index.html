@@ -4141,7 +4141,8 @@ function coopMenu(){
   $('box').innerHTML='<div class="kick">Coopération</div><h1>Coop à 2</h1><p>Deux commandants, une rue deux fois plus large. Budget, sections et grenades en commun.</p>'+
     '<div class="modes"><button class="mode sel" id="cHost"><b>Créer une partie</b><span>Tu reçois un code à donner à ton binôme</span></button>'+
     '<div class="mode" id="cJoinBox" style="cursor:default"><b>Rejoindre</b><span style="display:flex;gap:6px;margin-top:6px"><input id="cCode" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters" style="width:84px;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font:700 16px Inter,system-ui,sans-serif;letter-spacing:.2em;text-transform:uppercase"><button id="cJoin" style="padding:8px 14px;border-radius:10px;border:0;background:#f5c51e;color:#0d1321;font:800 14px Inter,system-ui,sans-serif">OK</button></span></div></div>'+
-    '<button id="cBack" class="ghostBtn">Retour</button>';
+    '<button id="cBot" class="ghostBtn">Tester seul avec un bot (éditeur)</button><button id="cBack" class="ghostBtn">Retour</button>';
+  $('cBot').onclick=()=>{location.search='?coop=bot';};
   $('cHost').onclick=()=>{location.search='?coop=host';};
   const join=()=>{const c=($('cCode').value||'').toUpperCase().replace(/[^A-Z]/g,'');if(c.length===4)location.search='?join='+c;else{$('cCode').focus();}};
   $('cJoin').onclick=join;$('cCode').addEventListener('keydown',e=>{if(e.key==='Enter')join();});
@@ -4231,10 +4232,42 @@ function hostHooks(){
   const _end=endGame;endGame=function(w,msg){_end(w,msg);NET.ev({t:'end',h:$('box').innerHTML});hostTick();
     const g=$('go');if(g){const o=g.onclick;g.onclick=()=>{o&&o();NET.ev({t:'start'});sendAllSpawns();};}};
   const _rain=setRain;setRain=function(v){_rain(v);NET.ev({t:'rn',v:!!v});};
+  installCoopReset();
+  const _tp=togglePause;togglePause=function(){_tp();};
+}
+function installCoopReset(){
   const _reset=reset;reset=function(){cmd2=null;_reset();makeCmd2();
     // section du joueur 2 : Section 1, deux intervenants au départ comme l'hôte
     if(!squads.some(s=>s.name==='SECTION 1')){const d=SQUADS.find(x=>x.name==='SECTION 1');d.n=2;d.start={shield:0,interv:2};const sq=addSquad(d,false);d.n=0;sq.want={shield:0,interv:2};sq.cap=2;}};
-  const _tp=togglePause;togglePause=function(){_tp();};
+}
+/* ---------- ÉDITEUR COOP : le joueur 2 est un bot ---------- */
+let botT=0,botBuyW=0;
+function botTick(dt){
+  const c=cmd2;if(!c||c.dying){netRin=null;return;}
+  const s1=squads.find(s=>s.name==='SECTION 1');
+  // le bot reste derrière sa section, et frappe ce qui s'approche
+  let tx=s1?s1.ax:4,tz=s1?s1.az+2.4:15.5,strike=false;
+  const e=nearestEnemy(c.x,c.z,4);
+  if(e&&phase==='wave'){tx=e.x;tz=e.z+.9;strike=Math.hypot(e.x-c.x,e.z-c.z)<1.7;}
+  const dx=tx-c.x,dz=tz-c.z,d=Math.hypot(dx,dz),sp=CFG.commanderSpeed*crsSpd*dt;
+  let x=c.x,z=c.z,f=c.faceT;if(d>.25){x+=dx/d*Math.min(d,sp);z+=dz/d*Math.min(d,sp);f=Math.atan2(dx,dz);}
+  if(e&&strike)f=Math.atan2(e.x-c.x,e.z-c.z);
+  netRin={x,z,f,k:strike};
+  // ordres de sa section : charge sur un casseur marqué proche, sinon tient sa position
+  botT-=dt;if(s1&&botT<=0){botT=1;
+    const m=agents.find(a=>a.side==='e'&&a.marked&&!a.dying&&!a.arrested&&Math.hypot(a.x-s1.ax,a.z-s1.az)<7);
+    if(m&&phase==='wave'){s1.order='charge';s1.tx=m.x;s1.tz=Math.min(m.z,LINE_Z-1);}
+    else if(s1.order==='charge'){s1.order='hold';s1.tx=SQUADS.find(d=>d.name==='SECTION 1').x;s1.tz=SQUADS.find(d=>d.name==='SECTION 1').z;}
+    // entre deux vagues, il recrute un bouclier par vague si le budget le permet
+    if(phase==='prep'&&botBuyW!==wave&&budget>=150&&s1.cap<8){botBuyW=wave;recruit({role:'shield',cost:70},'SECTION 1');}}
+}
+function botStart(){
+  installCoopReset();
+  const _u=update;update=function(dt){botTick(dt);_u(dt);};
+  EDIT.on=true;
+  lobby('<div class="kick">Mode éditeur · coop</div><h1>Coop avec un bot</h1><p>Rue élargie. Le joueur 2 (anneau bleu, Section 1) est joué par un bot.</p><button id="go">Jouer</button><button id="cBack" class="ghostBtn">Retour</button>');
+  $('go').onclick=()=>{if(IS_TOUCH)goFS();startGame();fsChanged();edBuild();banner('Bot connecté · commandant bleu',1800);};
+  $('cBack').onclick=()=>{location.href=soloURL();};
 }
 function sendAllSpawns(){for(const a of agents)if(a.spec)NET.q.push({t:'sp',s:a.spec});}
 function hostStart(){
@@ -4380,7 +4413,7 @@ function guestStart(code){
 }
 if(COOP){
   const jc=(NETQ.get('join')||'').toUpperCase().replace(/[^A-Z]/g,'');
-  setTimeout(()=>{if(jc.length===4)guestStart(jc);else hostStart();},0);
+  setTimeout(()=>{if(jc.length===4)guestStart(jc);else if(NETQ.get('coop')==='bot')botStart();else hostStart();},0);
 }
 window.__net={openShop:()=>openShop(),closeShop:()=>closeShop(),get shopOpen(){return shopOpen;},get paused(){return paused;},kill:a=>kill(a),buy:id=>buy(id),launch:()=>launchWave(),move:(x,z)=>orderMove(x,z),NET,PUP,get cmd2(){return cmd2;},get cmd(){return cmd;},hostRpc,get phase(){return phase;},squads,agents};
 
